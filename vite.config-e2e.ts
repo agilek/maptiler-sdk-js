@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import packagejson from './package.json';
+import { getNodeEnvDefine } from './vite.env';
 
 export default defineConfig({
   build: {
@@ -15,6 +16,6 @@ export default defineConfig({
   root: './e2e',
   define: {
     __MT_SDK_VERSION__: JSON.stringify(packagejson.version),
-    __MT_NODE_ENV__: JSON.stringify(process.env.NODE_ENV),
+    __MT_NODE_ENV__: JSON.stringify(getNodeEnvDefine()),
   },
 });

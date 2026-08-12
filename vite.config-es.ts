@@ -3,6 +3,7 @@ import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 import packagejson from "./package.json";
 import { copyFileSync } from 'fs';
+import { getNodeEnvDefine } from './vite.env';
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -62,7 +63,7 @@ export default defineConfig({
   },
   define: {
     __MT_SDK_VERSION__: JSON.stringify(packagejson.version),
-    __MT_NODE_ENV__: JSON.stringify(process.env.NODE_ENV),
+    __MT_NODE_ENV__: JSON.stringify(getNodeEnvDefine()),
   },
   plugins,
 })

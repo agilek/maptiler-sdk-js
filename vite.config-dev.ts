@@ -2,6 +2,7 @@ import { resolve } from 'path';
 import { defineConfig } from 'vite';
 import packagejson from "./package.json";
 import { readdirSync } from 'fs';
+import { getNodeEnvDefine } from './vite.env';
 
 function green(text: string) {
   return `\x1b[32m${text}\x1b[0m`;
@@ -62,7 +63,7 @@ export default defineConfig({
   },
   define: {
     __MT_SDK_VERSION__: JSON.stringify(packagejson.version),
-    __MT_NODE_ENV__: JSON.stringify(process.env.NODE_ENV),
+    __MT_NODE_ENV__: JSON.stringify(getNodeEnvDefine()),
   },
   plugins: [
     {

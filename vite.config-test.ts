@@ -1,5 +1,6 @@
 import { defineConfig } from "vitest/config";
 import packagejson from "./package.json";
+import { getNodeEnvDefine } from "./vite.env";
 
 export default defineConfig({
   test: {
@@ -13,6 +14,6 @@ export default defineConfig({
   },
   define: {
     __MT_SDK_VERSION__: JSON.stringify(packagejson.version),
-    __MT_NODE_ENV__: JSON.stringify(process.env.NODE_ENV === "development"),
+    __MT_NODE_ENV__: JSON.stringify(getNodeEnvDefine()),
   },
 });
