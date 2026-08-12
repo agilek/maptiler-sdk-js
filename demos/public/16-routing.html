@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>MapTiler JS SDK — Routing (headless)</title>
+  <style>
+    html,
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    #map {
+      position: absolute;
+      inset: 0;
+      background: #ccc;
+    }
+
+    #panel {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 2;
+      width: 320px;
+      max-height: calc(100% - 20px);
+      overflow: auto;
+      padding: 14px;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 0 6px 2px rgb(0 0 0 / 8%);
+      font-size: 13px;
+      line-height: 18px;
+    }
+
+    #panel h1 {
+      margin: 0 0 10px;
+      font-size: 15px;
+    }
+
+    .group {
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e6e9f0;
+    }
+
+    .group:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: #4b5563;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    button {
+      font: inherit;
+      padding: 5px 10px;
+      margin: 0 4px 4px 0;
+      border: 1px solid #d5dced;
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    button.active {
+      background: #3174ff;
+      border-color: #3174ff;
+      color: #fff;
+    }
+
+    #routes .route {
+      padding: 8px;
+      margin-bottom: 6px;
+      border: 1px solid #d5dced;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    #routes .route.selected {
+      border-color: #3174ff;
+      background: #eef3ff;
+    }
+
+    #routes .route strong {
+      font-size: 15px;
+    }
+
+    #steps {
+      max-height: 220px;
+      overflow: auto;
+    }
+
+    #steps div {
+      padding: 5px 0;
+      border-bottom: 1px solid #f0f2f7;
+      cursor: pointer;
+    }
+
+    #steps div:hover {
+      color: #3174ff;
+    }
+
+    #status {
+      color: #6b7280;
+    }
+
+    #status.error {
+      color: #d92d20;
+    }
+
+    .hint {
+      color: #6b7280;
+      font-size: 12px;
+    }
+  </style>
+
+  <link rel="stylesheet" href="../build/maptiler-sdk.css">
+</head>
+
+<body>
+  <div id="map"></div>
+
+  <div id="panel">
+    <h1>Routing — headless API</h1>
+
+    <div class="group">
+      <span class="label">Transport</span>
+      <div id="profiles"></div>
+      <p class="hint">This session allows only car and bicycle, to show the <code>profiles</code> restriction.</p>
+    </div>
+
+    <div class="group">
+      <span class="label">Waypoints</span>
+      <button id="add-stop">Add a stop</button>
+      <button id="reverse">Reverse</button>
+      <button id="clear">Clear</button>
+      <p class="hint">Click the map to append a waypoint. Drag a marker to move one.</p>
+    </div>
+
+    <div class="group">
+      <span class="label">Units</span>
+      <button class="units" data-units="km">km</button>
+      <button class="units" data-units="mi">mi</button>
+    </div>
+
+    <div class="group">
+      <span class="label">Style</span>
+      <button class="style" data-style="streets-v2">Streets</button>
+      <button class="style" data-style="streets-v2-dark">Dark</button>
+      <button class="style" data-style="satellite">Satellite</button>
+      <p class="hint">The route must survive a style change.</p>
+    </div>
+
+    <div class="group">
+      <span class="label">Routes</span>
+      <p id="status">Waiting for waypoints…</p>
+      <div id="routes"></div>
+    </div>
+
+    <div class="group">
+      <span class="label">Turn by turn</span>
+      <div id="steps"></div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/16-routing.ts"></script>
+</body>
+
+</html>

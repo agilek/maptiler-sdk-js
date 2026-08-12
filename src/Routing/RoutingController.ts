@@ -1,4 +1,5 @@
 import maplibregl from "maplibre-gl";
+import type { Subscription } from "maplibre-gl";
 import type { Map as SDKMap } from "../Map";
 import { RouteRenderer } from "./RouteRenderer";
 import { routing } from "./routing-api";
@@ -15,11 +16,21 @@ import type {
   RoutingOptions,
   RoutingProfile,
   RoutingProfileOptions,
+  RoutingEventType,
   RoutingUnits,
   RoutingWaypoint,
   RoutingWaypointInput,
   RoutingWaypointsChangeReason,
 } from "./types";
+
+/** Listener shape of the typed `on`/`once`/`off` overloads. */
+type RoutingEventListener = (event: RoutingEventType[keyof RoutingEventType]) => void;
+
+/**
+ * MapLibre's own listener type, which is intentionally untyped. The typed
+ * overloads narrow it for consumers and cast back to it at the boundary.
+ */
+type EventedListener = Parameters<maplibregl.Evented["on"]>[1];
 
 /**
  * A routing session attached to one map.
@@ -85,6 +96,41 @@ export class RoutingController extends maplibregl.Evented {
       this.destroy();
     });
   }
+
+  //#region Events
+
+  /**
+   * Subscribes to a routing event.
+   *
+   * @param type - Event name. See {@link RoutingEventType} for the payloads.
+   * @param listener - Called with the event payload.
+   *
+   * @example
+   * ```ts
+   * routing.on("routingroutes", (event) => {
+   *   // event.routes is typed
+   *   console.log(event.routes[event.selectedIndex].summary.totalTime);
+   * });
+   * ```
+   */
+  override on<T extends keyof RoutingEventType>(type: T, listener: (event: RoutingEventType[T]) => void): Subscription;
+  override on(type: string, listener: RoutingEventListener): Subscription {
+    return super.on(type, listener as EventedListener);
+  }
+
+  /** Subscribes to a routing event for one firing only. */
+  override once<T extends keyof RoutingEventType>(type: T, listener: (event: RoutingEventType[T]) => void): this;
+  override once(type: string, listener?: RoutingEventListener): this | Promise<unknown> {
+    return super.once(type, listener as EventedListener) as this;
+  }
+
+  /** Removes a previously added listener. */
+  override off<T extends keyof RoutingEventType>(type: T, listener: (event: RoutingEventType[T]) => void): this;
+  override off(type: string, listener: RoutingEventListener): this {
+    return super.off(type, listener as EventedListener);
+  }
+
+  //#endregion
 
   //#region Waypoints
 
