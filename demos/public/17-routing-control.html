@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>MapTiler JS SDK — Routing control</title>
+  <style>
+    html,
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    #map {
+      position: absolute;
+      inset: 0;
+      background: #ccc;
+    }
+
+    #panel {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 2;
+      width: 290px;
+      max-height: calc(100% - 20px);
+      overflow: auto;
+      padding: 14px;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 0 6px 2px rgb(0 0 0 / 8%);
+      font-size: 13px;
+    }
+
+    #panel h1 {
+      margin: 0 0 4px;
+      font-size: 15px;
+    }
+
+    #panel p.hint {
+      margin: 0 0 12px;
+      color: #6b7280;
+      font-size: 12px;
+    }
+
+    .group {
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #e6e9f0;
+    }
+
+    .group:last-child {
+      border-bottom: none;
+    }
+
+    .label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: #4b5563;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    button {
+      font: inherit;
+      padding: 4px 8px;
+      margin: 0 4px 4px 0;
+      border: 1px solid #d5dced;
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    label.check {
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    #log {
+      margin: 0;
+      max-height: 120px;
+      overflow: auto;
+      background: #f6f7fb;
+      border-radius: 4px;
+      padding: 6px;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+  </style>
+
+  <link rel="stylesheet" href="../build/maptiler-sdk.css">
+</head>
+
+<body>
+  <div id="map"></div>
+
+  <div id="panel">
+    <h1>Routing control</h1>
+    <p class="hint">Every button below reconfigures the panel on the left by rebuilding the control with new options.</p>
+
+    <div class="group">
+      <span class="label">Transport modes</span>
+      <button data-modes="all">All four</button>
+      <button data-modes="car,bicycle">Car + bike</button>
+      <button data-modes="custom">Relabelled car</button>
+    </div>
+
+    <div class="group">
+      <span class="label">Filters</span>
+      <button data-filters="all">All</button>
+      <button data-filters="units">Units only</button>
+      <button data-filters="none">None</button>
+    </div>
+
+    <div class="group">
+      <span class="label">Interactions</span>
+      <label class="check"><input type="checkbox" id="opt-search" checked> Place search</label>
+      <label class="check"><input type="checkbox" id="opt-drag" checked> Drag waypoints on map</label>
+      <label class="check"><input type="checkbox" id="opt-turn" checked> Turn-by-turn</label>
+      <label class="check"><input type="checkbox" id="opt-collapsible" checked> Collapsible</label>
+    </div>
+
+    <div class="group">
+      <span class="label">Theme</span>
+      <input type="color" id="accent" value="#3174ff">
+      <button data-theme="dark">Dark preset</button>
+      <button data-theme="reset">Reset</button>
+    </div>
+
+    <div class="group">
+      <span class="label">Localization</span>
+      <button data-lang="en">EN</button>
+      <button data-lang="fr">FR</button>
+      <button data-lang="de">DE</button>
+      <button data-lang="compact">Compact durations</button>
+    </div>
+
+    <div class="group">
+      <span class="label">Escape hatches</span>
+      <button data-render="card">Custom route card</button>
+      <button data-render="default">Default cards</button>
+      <button data-unstyled="on">Unstyled</button>
+    </div>
+
+    <div class="group">
+      <span class="label">Programmatic</span>
+      <button data-api="waypoints">Set waypoints</button>
+      <button data-api="select">Select route 2</button>
+      <button data-api="detail">Open turn-by-turn</button>
+      <button data-api="collapse">Collapse</button>
+    </div>
+
+    <div class="group">
+      <span class="label">Style</span>
+      <button data-style="streets-v2">Streets</button>
+      <button data-style="streets-v2-dark">Dark</button>
+    </div>
+
+    <div class="group">
+      <span class="label">Events</span>
+      <pre id="log"></pre>
+    </div>
+  </div>
+
+  <script type="module" src="/src/17-routing-control.ts"></script>
+</body>
+
+</html>

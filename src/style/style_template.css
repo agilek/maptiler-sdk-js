@@ -179,3 +179,672 @@
   font-size: 16px;
   max-width: calc(100% - 80px);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   MapTiler Routing control
+
+   Every rule below is scoped under `.maptiler-routing`, which the control
+   omits when it is constructed with `unstyled: true` — that is what makes
+   the panel restylable from scratch.
+
+   Colors, spacing and typography come from the custom properties declared on
+   the root. They are the public theming contract: set them in your own CSS,
+   or through the control's `theme` / `cssVariables` options. No rule here
+   uses `!important`, and no selector is stronger than two classes, so your
+   own rules win by cascade order.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.maptiler-routing {
+  --maptiler-routing-width: 360px;
+  --maptiler-routing-max-height: calc(100vh - 40px);
+  --maptiler-routing-font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --maptiler-routing-font-size: 13px;
+  --maptiler-routing-surface: #fff;
+  --maptiler-routing-surface-alt: #eef3ff;
+  --maptiler-routing-surface-hover: #e1eaff;
+  --maptiler-routing-text-color: #1f2937;
+  --maptiler-routing-muted-color: #6b7280;
+  --maptiler-routing-accent: #3174ff;
+  --maptiler-routing-accent-contrast: #fff;
+  --maptiler-routing-border-color: #d5dced;
+  --maptiler-routing-danger-color: #d92d20;
+  --maptiler-routing-icon-size: 18px;
+  --maptiler-routing-radius: 10px;
+  --maptiler-routing-radius-small: 4px;
+  --maptiler-routing-gap: 8px;
+  --maptiler-routing-padding: 14px;
+  /* mirrors the .maplibregl-ctrl-group shadow at the top of this file, so the
+     panel reads as part of the same control set */
+  --maptiler-routing-shadow: 0 0 6px 2px rgb(0 0 0 / 8%);
+  --maptiler-routing-transition-duration: 150ms;
+
+  display: flex;
+  flex-direction: column;
+  width: var(--maptiler-routing-width);
+  max-width: calc(100vw - 20px);
+  max-height: var(--maptiler-routing-max-height);
+  background: var(--maptiler-routing-surface);
+  color: var(--maptiler-routing-text-color);
+  border-radius: var(--maptiler-routing-radius);
+  box-shadow: var(--maptiler-routing-shadow);
+  font-family: var(--maptiler-routing-font-family);
+  font-size: var(--maptiler-routing-font-size);
+  line-height: 1.45;
+  overflow: hidden;
+}
+
+.maptiler-routing *,
+.maptiler-routing *::before,
+.maptiler-routing *::after {
+  /* scoped to the panel: MapLibre's stylesheet sets no global box-sizing and
+     the host page's reset is unknowable */
+  box-sizing: border-box;
+}
+
+/* Header */
+
+.maptiler-routing-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--maptiler-routing-gap);
+  padding: var(--maptiler-routing-padding);
+  padding-bottom: 8px;
+}
+
+.maptiler-routing-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.maptiler-routing-body {
+  padding: 0 var(--maptiler-routing-padding) var(--maptiler-routing-padding);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+
+/* Buttons */
+
+.maptiler-routing button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+.maptiler-routing button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.maptiler-routing-toggle,
+.maptiler-routing-waypoint-remove,
+.maptiler-routing-waypoint-handle,
+.maptiler-routing-route-detail,
+.maptiler-routing-detail-back {
+  /* the SDK's own control button metrics, so the panel's icon buttons read as
+     the same family as the zoom and compass buttons */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 33px;
+  height: 33px;
+  flex: none;
+  border-radius: 3px;
+  color: var(--maptiler-routing-muted-color);
+}
+
+.maptiler-routing-toggle:hover,
+.maptiler-routing-waypoint-remove:hover:not(:disabled),
+.maptiler-routing-route-detail:hover,
+.maptiler-routing-detail-back:hover {
+  background: var(--maptiler-routing-surface-alt);
+  color: var(--maptiler-routing-text-color);
+}
+
+.maptiler-routing :focus-visible {
+  outline: 2px solid var(--maptiler-routing-accent);
+  outline-offset: 1px;
+}
+
+/* Transport modes */
+
+.maptiler-routing-modes {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: var(--maptiler-routing-gap);
+  background: var(--maptiler-routing-surface-alt);
+  border-radius: var(--maptiler-routing-radius-small);
+}
+
+.maptiler-routing-mode {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 4px;
+  border-radius: var(--maptiler-routing-radius-small);
+  color: var(--maptiler-routing-muted-color);
+  transition: background var(--maptiler-routing-transition-duration) ease;
+}
+
+.maptiler-routing-mode:hover {
+  background: var(--maptiler-routing-surface-hover);
+}
+
+.maptiler-routing-mode[aria-checked="true"] {
+  background: var(--maptiler-routing-accent);
+  color: var(--maptiler-routing-accent-contrast);
+}
+
+/* Waypoints */
+
+.maptiler-routing-waypoints {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+}
+
+.maptiler-routing-waypoint {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 6px;
+  position: relative;
+}
+
+.maptiler-routing-waypoint[data-dragging] {
+  opacity: 0.5;
+}
+
+.maptiler-routing-waypoint-field {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 6px;
+  padding: 0 10px;
+  height: 40px;
+  background: var(--maptiler-routing-surface);
+  border: 1px solid var(--maptiler-routing-border-color);
+  border-radius: var(--maptiler-routing-radius-small);
+  position: relative;
+}
+
+.maptiler-routing-waypoint-field:focus-within {
+  border-color: var(--maptiler-routing-accent);
+}
+
+.maptiler-routing-waypoint-pin {
+  color: var(--maptiler-routing-muted-color);
+  flex: none;
+}
+
+.maptiler-routing-waypoint[data-located] .maptiler-routing-waypoint-pin {
+  color: var(--maptiler-routing-accent);
+}
+
+.maptiler-routing-waypoint-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+}
+
+/* Suggestions */
+
+.maptiler-routing-suggestions {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  z-index: 2;
+  max-height: 240px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  background: var(--maptiler-routing-surface);
+  border: 1px solid var(--maptiler-routing-border-color);
+  border-radius: var(--maptiler-routing-radius-small);
+  box-shadow: var(--maptiler-routing-shadow);
+}
+
+.maptiler-routing-suggestion {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 8px;
+  border-radius: var(--maptiler-routing-radius-small);
+  cursor: pointer;
+}
+
+.maptiler-routing-suggestion:hover,
+.maptiler-routing-suggestion[data-active] {
+  background: var(--maptiler-routing-surface-alt);
+}
+
+.maptiler-routing-suggestion-primary {
+  font-weight: 500;
+}
+
+.maptiler-routing-suggestion-secondary {
+  color: var(--maptiler-routing-muted-color);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Actions */
+
+.maptiler-routing-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: var(--maptiler-routing-gap);
+}
+
+.maptiler-routing-add-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: var(--maptiler-routing-radius-small);
+  color: var(--maptiler-routing-accent);
+}
+
+.maptiler-routing-add-stop:hover:not(:disabled),
+.maptiler-routing-pick-on-map:hover {
+  background: var(--maptiler-routing-surface-alt);
+}
+
+.maptiler-routing-pick-on-map {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 33px;
+  height: 33px;
+  border-radius: 3px;
+  color: var(--maptiler-routing-muted-color);
+}
+
+.maptiler-routing-pick-on-map[aria-pressed="true"] {
+  background: var(--maptiler-routing-accent);
+  color: var(--maptiler-routing-accent-contrast);
+}
+
+/* Filters */
+
+.maptiler-routing-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--maptiler-routing-gap);
+  padding-bottom: var(--maptiler-routing-gap);
+  border-bottom: 1px solid var(--maptiler-routing-border-color);
+  margin-bottom: var(--maptiler-routing-gap);
+}
+
+.maptiler-routing-select {
+  font: inherit;
+  color: inherit;
+  padding: 5px 8px;
+  background: var(--maptiler-routing-surface);
+  border: 1px solid var(--maptiler-routing-border-color);
+  border-radius: var(--maptiler-routing-radius-small);
+}
+
+.maptiler-routing-switch-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.maptiler-routing-switch-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--maptiler-routing-muted-color);
+}
+
+.maptiler-routing-filter-label {
+  padding: 0 4px 0 0;
+  color: var(--maptiler-routing-muted-color);
+  font-size: 12px;
+}
+
+.maptiler-routing-units {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--maptiler-routing-surface-alt);
+  border-radius: var(--maptiler-routing-radius-small);
+}
+
+.maptiler-routing-unit {
+  padding: 3px 8px;
+  border-radius: var(--maptiler-routing-radius-small);
+  color: var(--maptiler-routing-muted-color);
+}
+
+.maptiler-routing-unit[aria-checked="true"] {
+  background: var(--maptiler-routing-surface);
+  color: var(--maptiler-routing-text-color);
+  font-weight: 600;
+}
+
+/* Status */
+
+.maptiler-routing-status {
+  margin: 4px 0;
+  color: var(--maptiler-routing-muted-color);
+}
+
+.maptiler-routing-error {
+  margin: 4px 0;
+  color: var(--maptiler-routing-danger-color);
+}
+
+/* Route cards */
+
+.maptiler-routing-routes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.maptiler-routing-routes-header h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--maptiler-routing-muted-color);
+}
+
+.maptiler-routing-routes {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.maptiler-routing-routes[aria-busy="true"] {
+  opacity: 0.55;
+}
+
+.maptiler-routing-route-card {
+  display: flex;
+  align-items: stretch;
+  margin-bottom: 6px;
+  border: 1px solid var(--maptiler-routing-border-color);
+  border-radius: var(--maptiler-routing-radius-small);
+  overflow: hidden;
+  transition: border-color var(--maptiler-routing-transition-duration) ease;
+}
+
+.maptiler-routing-route-card:hover {
+  background: var(--maptiler-routing-surface-alt);
+}
+
+.maptiler-routing-route-card[data-selected] {
+  border-color: var(--maptiler-routing-accent);
+  background: var(--maptiler-routing-surface-alt);
+}
+
+.maptiler-routing-route-body {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.maptiler-routing-route-duration {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.maptiler-routing-route-meta {
+  color: var(--maptiler-routing-muted-color);
+}
+
+.maptiler-routing-route-description {
+  color: var(--maptiler-routing-muted-color);
+  font-size: 12px;
+}
+
+/* Turn by turn */
+
+.maptiler-routing-detail-top {
+  display: flex;
+  align-items: center;
+  gap: var(--maptiler-routing-gap);
+  padding-bottom: 4px;
+}
+
+.maptiler-routing-detail-summary {
+  margin: 0 0 8px;
+  color: var(--maptiler-routing-muted-color);
+}
+
+.maptiler-routing-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.maptiler-routing-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 6px;
+  text-align: left;
+  border-bottom: 1px solid var(--maptiler-routing-border-color);
+}
+
+.maptiler-routing-step:hover {
+  background: var(--maptiler-routing-surface-alt);
+}
+
+.maptiler-routing-step-icon {
+  color: var(--maptiler-routing-accent);
+  flex: none;
+}
+
+.maptiler-routing-step-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.maptiler-routing-step-distance {
+  color: var(--maptiler-routing-muted-color);
+  white-space: nowrap;
+}
+
+/* Icons
+
+   Drawn as masks rather than background images, so a single
+   `background-color` recolors every icon from the theme. The `data-maneuver`
+   rules come after the `data-icon` ones, which is what lets a consumer style
+   a maneuver kind the SDK does not know about yet. */
+
+.maptiler-routing-icon {
+  display: inline-block;
+  width: var(--maptiler-routing-icon-size);
+  height: var(--maptiler-routing-icon-size);
+  flex: none;
+  background-color: currentColor;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.maptiler-routing-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .maptiler-routing * {
+    transition-duration: 0.01ms;
+  }
+}
+
+.maptiler-routing-icon[data-icon="add-circle"] {
+  -webkit-mask-image: url([src/style/svg/routing-add-circle.svg]);
+  mask-image: url([src/style/svg/routing-add-circle.svg]);
+}
+
+.maptiler-routing-icon[data-icon="chevron-down"] {
+  -webkit-mask-image: url([src/style/svg/routing-chevron-down.svg]);
+  mask-image: url([src/style/svg/routing-chevron-down.svg]);
+}
+
+.maptiler-routing-icon[data-icon="chevron-left"] {
+  -webkit-mask-image: url([src/style/svg/routing-chevron-left.svg]);
+  mask-image: url([src/style/svg/routing-chevron-left.svg]);
+}
+
+.maptiler-routing-icon[data-icon="chevron-right"] {
+  -webkit-mask-image: url([src/style/svg/routing-chevron-right.svg]);
+  mask-image: url([src/style/svg/routing-chevron-right.svg]);
+}
+
+.maptiler-routing-icon[data-icon="chevron-up"] {
+  -webkit-mask-image: url([src/style/svg/routing-chevron-up.svg]);
+  mask-image: url([src/style/svg/routing-chevron-up.svg]);
+}
+
+.maptiler-routing-icon[data-icon="crosshair"] {
+  -webkit-mask-image: url([src/style/svg/routing-crosshair.svg]);
+  mask-image: url([src/style/svg/routing-crosshair.svg]);
+}
+
+.maptiler-routing-icon[data-icon="drag"] {
+  -webkit-mask-image: url([src/style/svg/routing-drag.svg]);
+  mask-image: url([src/style/svg/routing-drag.svg]);
+}
+
+.maptiler-routing-icon[data-icon="maneuver-continue"] {
+  -webkit-mask-image: url([src/style/svg/routing-maneuver-continue.svg]);
+  mask-image: url([src/style/svg/routing-maneuver-continue.svg]);
+}
+
+.maptiler-routing-icon[data-icon="maneuver-destination"] {
+  -webkit-mask-image: url([src/style/svg/routing-maneuver-destination.svg]);
+  mask-image: url([src/style/svg/routing-maneuver-destination.svg]);
+}
+
+.maptiler-routing-icon[data-icon="maneuver-left"] {
+  -webkit-mask-image: url([src/style/svg/routing-maneuver-left.svg]);
+  mask-image: url([src/style/svg/routing-maneuver-left.svg]);
+}
+
+.maptiler-routing-icon[data-icon="maneuver-right"] {
+  -webkit-mask-image: url([src/style/svg/routing-maneuver-right.svg]);
+  mask-image: url([src/style/svg/routing-maneuver-right.svg]);
+}
+
+.maptiler-routing-icon[data-icon="maneuver-roundabout"] {
+  -webkit-mask-image: url([src/style/svg/routing-maneuver-roundabout.svg]);
+  mask-image: url([src/style/svg/routing-maneuver-roundabout.svg]);
+}
+
+.maptiler-routing-icon[data-icon="maneuver-sharp-left"] {
+  -webkit-mask-image: url([src/style/svg/routing-maneuver-sharp-left.svg]);
+  mask-image: url([src/style/svg/routing-maneuver-sharp-left.svg]);
+}
+
+.maptiler-routing-icon[data-icon="maneuver-sharp-right"] {
+  -webkit-mask-image: url([src/style/svg/routing-maneuver-sharp-right.svg]);
+  mask-image: url([src/style/svg/routing-maneuver-sharp-right.svg]);
+}
+
+.maptiler-routing-icon[data-icon="maneuver-slight-left"] {
+  -webkit-mask-image: url([src/style/svg/routing-maneuver-slight-left.svg]);
+  mask-image: url([src/style/svg/routing-maneuver-slight-left.svg]);
+}
+
+.maptiler-routing-icon[data-icon="maneuver-slight-right"] {
+  -webkit-mask-image: url([src/style/svg/routing-maneuver-slight-right.svg]);
+  mask-image: url([src/style/svg/routing-maneuver-slight-right.svg]);
+}
+
+.maptiler-routing-icon[data-icon="maneuver-start"] {
+  -webkit-mask-image: url([src/style/svg/routing-maneuver-start.svg]);
+  mask-image: url([src/style/svg/routing-maneuver-start.svg]);
+}
+
+.maptiler-routing-icon[data-icon="maneuver-uturn-left"] {
+  -webkit-mask-image: url([src/style/svg/routing-maneuver-uturn-left.svg]);
+  mask-image: url([src/style/svg/routing-maneuver-uturn-left.svg]);
+}
+
+.maptiler-routing-icon[data-icon="maneuver-uturn-right"] {
+  -webkit-mask-image: url([src/style/svg/routing-maneuver-uturn-right.svg]);
+  mask-image: url([src/style/svg/routing-maneuver-uturn-right.svg]);
+}
+
+.maptiler-routing-icon[data-icon="mode-bicycle"] {
+  -webkit-mask-image: url([src/style/svg/routing-mode-bicycle.svg]);
+  mask-image: url([src/style/svg/routing-mode-bicycle.svg]);
+}
+
+.maptiler-routing-icon[data-icon="mode-car"] {
+  -webkit-mask-image: url([src/style/svg/routing-mode-car.svg]);
+  mask-image: url([src/style/svg/routing-mode-car.svg]);
+}
+
+.maptiler-routing-icon[data-icon="mode-pedestrian"] {
+  -webkit-mask-image: url([src/style/svg/routing-mode-pedestrian.svg]);
+  mask-image: url([src/style/svg/routing-mode-pedestrian.svg]);
+}
+
+.maptiler-routing-icon[data-icon="mode-truck"] {
+  -webkit-mask-image: url([src/style/svg/routing-mode-truck.svg]);
+  mask-image: url([src/style/svg/routing-mode-truck.svg]);
+}
+
+.maptiler-routing-icon[data-icon="route-pin"] {
+  -webkit-mask-image: url([src/style/svg/routing-route-pin.svg]);
+  mask-image: url([src/style/svg/routing-route-pin.svg]);
+}
+
+.maptiler-routing-icon[data-icon="route-start"] {
+  -webkit-mask-image: url([src/style/svg/routing-route-start.svg]);
+  mask-image: url([src/style/svg/routing-route-start.svg]);
+}
+
+.maptiler-routing-icon[data-icon="route-stop"] {
+  -webkit-mask-image: url([src/style/svg/routing-route-stop.svg]);
+  mask-image: url([src/style/svg/routing-route-stop.svg]);
+}
+
+.maptiler-routing-icon[data-icon="trash"] {
+  -webkit-mask-image: url([src/style/svg/routing-trash.svg]);
+  mask-image: url([src/style/svg/routing-trash.svg]);
+}

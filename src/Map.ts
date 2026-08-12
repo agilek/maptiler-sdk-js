@@ -53,6 +53,8 @@ import { GradientDefinition, RadialGradientLayer, RadialGradientLayerConstructor
 import { StyleSpecificationWithMetaData } from "./custom-layers/extractCustomLayerStyle";
 import { logSDKVersion } from "./utils/logSDKVersion";
 import { RoutingController } from "./Routing/RoutingController";
+import { MaptilerRoutingControl } from "./Routing/ui/MaptilerRoutingControl";
+import type { MaptilerRoutingControlOptions } from "./Routing/ui/routing-ui-types";
 import type { RoutingOptions } from "./Routing/types";
 import { ROUTING_VERSION } from "./Routing/version";
 import { setWorkerCount } from ".";
@@ -299,6 +301,24 @@ export type MapOptions = Omit<MapOptionsML, "style" | "maplibreLogo" | "attribut
    * ```
    */
   routing?: boolean | RoutingOptions;
+
+  /**
+   * Show the routing control: a panel with transport modes, waypoints with
+   * place search, route alternatives and turn-by-turn directions.
+   *
+   * `true` places it in the default corner (`top-left`), a {@link ControlPosition}
+   * places it, and an options object places and configures it. Enabling the
+   * control also enables the routing sub-system.
+   *
+   * Default: `false`
+   *
+   * @remarks
+   * **API Key Usage**: each computed route counts against your MapTiler Cloud
+   * API key quota.
+   *
+   * @see {@link MaptilerRoutingControlOptions}
+   */
+  routingControl?: boolean | ControlPosition | MaptilerRoutingControlOptions;
 };
 
 /**
@@ -611,6 +631,7 @@ export class Map extends maplibregl.Map {
   private terrainFlattening = false;
   private minimap?: Minimap;
   private routingController?: RoutingController;
+  private routingControl?: MaptilerRoutingControl;
   private forceLanguageUpdate: boolean;
   private languageAlwaysBeenStyle: boolean;
   private isReady = false;
@@ -1121,6 +1142,16 @@ export class Map extends maplibregl.Map {
       if (options.routing) {
         this.enableRouting(typeof options.routing === "object" ? options.routing : {});
       }
+
+      if (options.routingControl) {
+        const controlOptions = typeof options.routingControl === "object" ? options.routingControl : {};
+        // the string form and the object form are mutually exclusive, so the
+        // position comes from whichever was given
+        const position = typeof options.routingControl === "string" ? options.routingControl : (controlOptions.position ?? "top-left");
+
+        this.routingControl = new MaptilerRoutingControl(controlOptions);
+        this.addControl(this.routingControl, position);
+      }
     });
 
     const terrainCallback = (evt: LoadWithTerrainEvent) => {
@@ -1538,6 +1569,17 @@ export class Map extends maplibregl.Map {
    */
   getRouting(): RoutingController | undefined {
     return this.routingController;
+  }
+
+  /**
+   * The routing control added through the {@link MapOptions.routingControl}
+   * map option, or `undefined` when the option was not used.
+   *
+   * A control added with `map.addControl` is not tracked here — the caller
+   * already holds it.
+   */
+  getRoutingControl(): MaptilerRoutingControl | undefined {
+    return this.routingControl;
   }
 
   /**
