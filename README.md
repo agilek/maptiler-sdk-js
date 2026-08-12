@@ -1968,6 +1968,220 @@ config.experimental_defaultPathSampleSteps = 6;
 config.experimental_defaultWorkerCount = 8;
 ```
 
+### Routing and directions
+
+Compute routes with the [MapTiler Routing API](https://docs.maptiler.com/cloud/api/) and draw them
+on the map. There are two halves, and you can use either on its own:
+
+- a **headless session** (`map.enableRouting()`), which owns the waypoints, talks to the API, draws
+  the route and reports through events;
+- an optional **panel** (`MaptilerRoutingControl`), which is a view of that session.
+
+Both share one session per map, so a route set programmatically shows up in the panel, and a route
+built in the panel is readable programmatically.
+
+> 📣 _**Note:**_ Each computed route counts against your MapTiler Cloud API key quota. Place search
+> in the panel additionally uses the Geocoding API.
+
+#### The panel
+
+```ts
+import { Map, MaptilerRoutingControl } from "@maptiler/sdk";
+
+const map = new Map({ container: "map", routingControl: true });
+```
+
+or, added like any other control:
+
+```ts
+map.addControl(
+  new MaptilerRoutingControl({
+    modes: ["car", "bicycle"],   // which transport tabs exist, in order
+    filters: ["departure", "units"],
+    alternates: 2,
+  }),
+  "top-left",
+);
+```
+
+#### The headless session
+
+```ts
+const routing = map.enableRouting({ profile: "car", alternates: 2 });
+
+routing.setWaypoints([
+  [8.5417, 47.3769],   // Zurich
+  [12.8724, 50.2329],  // Karlovy Vary
+]);
+
+routing.on("routingroutes", (event) => {
+  const best = event.routes[event.selectedIndex];
+  console.log(routing.getSteps().length, "steps");
+  console.log(best.summary.totalLength, routing.getUnits());
+});
+```
+
+`RoutingController` exposes the waypoints (`addWaypoint`, `updateWaypoint`, `moveWaypoint`,
+`removeWaypoint`), the configuration (`setProfile`, `setUnits`, `setDepartureTime`,
+`setAlternates`), the results (`getRoutes`, `selectRoute`, `getSteps`, `zoomToStep`, `fitBounds`)
+and the lifecycle (`calculate`, `cancel`, `clear`). Changes are coalesced behind a debounce, so a
+burst of edits costs one request, and a superseded request is aborted rather than reported as an
+error.
+
+Events: `routingstart`, `routingroutes`, `routingselect`, `routingwaypoints`, `routingerror` and
+`routingclear`, all typed by name.
+
+#### Without a map
+
+`routing.directions()` is a plain API call, useful server-side of a map or before one exists. The
+API key, the session parameter and any custom `fetch` come from the global `config`:
+
+```ts
+import { routing } from "@maptiler/sdk";
+
+const response = await routing.directions({
+  profile: "bicycle",
+  locations: [
+    { lon: 8.54, lat: 47.37 },
+    { lon: 12.87, lat: 50.23 },
+  ],
+  profileOptions: { type: "gravel" },   // only bicycle options are accepted here
+  response: { units: "km", alternates: 2 },
+});
+
+const coordinates = routing.getRouteCoordinates(response.route);
+```
+
+The same namespace carries the helpers for working with a response: `decodePolyline`,
+`getLegCoordinates`, `getRouteCoordinates`, `getRoutesBounds`, `getStepCoordinates`,
+`flattenRouteSteps`, `formatRouteDuration`, `formatRouteDistance`, `formatRouteArrival` and
+`describeRouteUsage`.
+
+#### Transport profiles
+
+`car`, `truck`, `bicycle` and `pedestrian`. The profile decides which `profileOptions` are accepted,
+and TypeScript enforces it — passing a truck's `weight` under `profile: "bicycle"` is a compile
+error.
+
+| Profile | Options |
+|---|---|
+| `car` | `mode` (`fastest` \| `shortest` \| `balanced`), `topSpeed`, `avoidances` |
+| `truck` | `topSpeed`, `avoidances`, `weight`, `height`, `length`, `axleLoad`, `hazmat` |
+| `bicycle` | `type` (`road` \| `gravel` \| `mountain` \| `city`), `cyclingSpeed` |
+| `pedestrian` | `walkingSpeed` |
+
+`avoidances` accepts `tolls`, `highway` and `ferry`.
+
+#### Customising the panel
+
+Four levels, in the order to reach for them.
+
+**1. Options.** Which transport modes exist and how they are labelled, which filters are shown,
+units, alternates, waypoint limits, and each interaction:
+
+```ts
+new MaptilerRoutingControl({
+  modes: [{ id: "car", label: "Drive" }, { id: "bicycle" }],
+  filters: ["mode", "units"],           // "mode" | "departure" | "avoidances" | "units"
+  avoidances: ["tolls", "ferry"],
+  units: "mi",
+  maxWaypoints: 6,
+  search: { minLength: 3, country: ["ch", "de"] },
+  clickToAddWaypoint: "armed",          // "off" | "armed" | "always"
+  dragWaypointsOnMap: true,
+  reorderWaypoints: true,
+  turnByTurn: { zoomOnStepClick: true, maxZoom: 15 },
+  collapsible: true,
+});
+```
+
+**2. Theming.** Every colour, radius and size is a CSS custom property on the panel root. Set them
+in your own stylesheet, or through the `theme` and `cssVariables` options. No shipped rule uses
+`!important` and none is stronger than two classes, so your own rules win by cascade order.
+
+```css
+.maptiler-routing {
+  --maptiler-routing-accent: #e2001a;
+  --maptiler-routing-radius: 4px;
+  --maptiler-routing-width: 420px;
+}
+```
+
+A dark panel, copy-pasteable:
+
+```css
+.maptiler-routing {
+  --maptiler-routing-surface: #12161f;
+  --maptiler-routing-surface-alt: #1b2230;
+  --maptiler-routing-surface-hover: #232c3d;
+  --maptiler-routing-text-color: #e6eaf2;
+  --maptiler-routing-muted-color: #95a0b5;
+  --maptiler-routing-border-color: #2b3446;
+  --maptiler-routing-accent: #6f9bff;
+  --maptiler-routing-accent-contrast: #0b0e14;
+}
+```
+
+The class names are part of the public API: `maptiler-routing`, `-header`, `-body`, `-modes`,
+`-mode`, `-waypoints`, `-waypoint`, `-waypoint-field`, `-waypoint-input`, `-suggestions`,
+`-suggestion`, `-actions`, `-add-stop`, `-pick-on-map`, `-filters`, `-select`, `-units`, `-unit`,
+`-status`, `-error`, `-routes`, `-route-card`, `-route-duration`, `-route-meta`, `-steps`, `-step`
+and `-icon`. `unstyled: true` drops the root class, so nothing the SDK ships applies and the DOM is
+yours to style from scratch.
+
+**3. Localization and formatting.** Every visible string, and how values are turned into text:
+
+```ts
+new MaptilerRoutingControl({
+  labels: {
+    title: "Itinéraire",
+    from: "Point de départ",
+    to: "Destination",
+    modes: { car: "Voiture", bicycle: "Vélo" },
+  },
+  formatters: {
+    duration: (seconds) => `${Math.round(seconds / 60)} min`,
+  },
+});
+```
+
+**4. Render hooks.** Replace one subsection with your own element, and fall back to the built-in
+rendering by returning `undefined`:
+
+```ts
+new MaptilerRoutingControl({
+  renderers: {
+    routeCard: ({ route, index, selected, control, formatters }) => {
+      const card = document.createElement("li");
+      card.textContent = formatters.duration(route.summary.totalTime);
+      card.className = selected ? "my-card my-card--selected" : "my-card";
+      card.addEventListener("click", () => control.getRouting()?.selectRoute(index));
+      return card;
+    },
+  },
+});
+```
+
+Hooks exist for `transportModes`, `waypointRow`, `routeCard`, `step`, `status` and `footer`. If you
+find yourself replacing all of them, use the headless session directly instead.
+
+#### Styling the route on the map
+
+```ts
+map.enableRouting({
+  render: {
+    selected: { color: "#e2001a", width: 7 },
+    alternate: { color: "#c3c9d6", width: 4 },
+    casing: { color: "#fff", width: 11 },
+    beforeId: "my-layer",   // default: the style's first symbol layer
+  },
+  waypointMarkers: { draggable: true },
+  fitBounds: { padding: 60, maxZoom: 14 },
+});
+```
+
+The route survives style changes: the source and layers are re-added after every `setStyle`.
+
 ### Easy access to MapTiler API
 
 Our map SDK is not only about maps! We also provide plenty of wrappers to our API calls!

@@ -2,11 +2,20 @@
 
 ## NEXT
 ### ✨ Features and improvements
+- Adds routing: compute routes with the MapTiler Routing API and draw them on the map.
+  - `map.enableRouting()` returns a `RoutingController` that owns the waypoints, talks to the API, draws the route and reports through the `routingstart`, `routingroutes`, `routingselect`, `routingwaypoints`, `routingerror` and `routingclear` events.
+  - `MaptilerRoutingControl` is an optional panel over the same session: transport modes, waypoints with place search, filters, route alternatives and turn-by-turn directions. Add it with `map.addControl` or the `routingControl` map option.
+  - The panel is customisable through options (which transport modes and filters exist, units, alternates, interactions), CSS custom properties and a documented class-name contract, `labels` and `formatters` for localization, and `renderers.*` hooks that replace one subsection at a time.
+  - `routing.directions()` exposes the API on its own, alongside helpers for decoding polylines, joining leg geometry, flattening steps and formatting distances and durations.
+  - Enable it with `routing: true` / `routingControl: true` on the map, or per call. Each computed route counts against your MapTiler Cloud API key quota.
 
 ### 🐛 Bug Fixes
  - Fixes a bug in halo where a mismatch between the layer added to the map and the layer added to the `.halo` field were different instances, causing a runtime error.
 
 ### ⚙️ Others
+- `__MT_NODE_ENV__` now means the same thing in every build config. `vite.config-test.ts` injected `"true"`/`"false"` while the others injected the environment name, so development-only diagnostics were unreachable under Vitest; `vite.config-dev.ts` and `vite.config-e2e.ts` injected `undefined` whenever `NODE_ENV` was unset. All five now share `getNodeEnvDefine()`, and the define is typed as `"development" | "production"`.
+- `FetchError` gains an optional `detail`, appended to the message, so a service's own explanation survives alongside the HTTP status.
+- Adds `ENGINEERING_STYLEGUIDE.md`, describing the SDK's architecture, conventions and delivery process.
 
 
 ## 4.1.0
