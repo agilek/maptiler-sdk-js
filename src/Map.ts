@@ -52,6 +52,9 @@ import { CubemapDefinition, CubemapLayer, CubemapLayerConstructorOptions } from 
 import { GradientDefinition, RadialGradientLayer, RadialGradientLayerConstructorOptions } from "./custom-layers/RadialGradientLayer";
 import { StyleSpecificationWithMetaData } from "./custom-layers/extractCustomLayerStyle";
 import { logSDKVersion } from "./utils/logSDKVersion";
+import { RoutingController } from "./Routing/RoutingController";
+import type { RoutingOptions } from "./Routing/types";
+import { ROUTING_VERSION } from "./Routing/version";
 import { setWorkerCount } from ".";
 import { EXPERIMENTAL_TILE_PRELOADING_VERSION } from "./tile-preloading/version";
 
@@ -267,6 +270,35 @@ export type MapOptions = Omit<MapOptionsML, "style" | "maplibreLogo" | "attribut
    * **API Key Usage**: Each tile request counts against your MapTiler Cloud API key quota. Use with caution.
    */
   useExperimentalTilePreloading?: boolean;
+
+  /**
+   * Enables the routing sub-system, which computes routes with the MapTiler
+   * Routing API and draws them on the map.
+   *
+   * `true` enables it with the defaults, an object enables and configures it,
+   * and `false` or omitting it leaves it off. Reach the session afterwards
+   * with {@link Map.getRouting}.
+   *
+   * Default: `false`
+   *
+   * @remarks
+   * **API Key Usage**: each computed route counts against your MapTiler Cloud
+   * API key quota.
+   *
+   * @example
+   * ```ts
+   * const map = new Map({
+   *   container: "map",
+   *   routing: { profiles: ["car", "bicycle"], alternates: 2 },
+   * });
+   *
+   * map.getRouting()?.setWaypoints([
+   *   [8.54, 47.37],
+   *   [12.87, 50.23],
+   * ]);
+   * ```
+   */
+  routing?: boolean | RoutingOptions;
 };
 
 /**
@@ -578,6 +610,7 @@ export class Map extends maplibregl.Map {
   private terrainGrowing = false;
   private terrainFlattening = false;
   private minimap?: Minimap;
+  private routingController?: RoutingController;
   private forceLanguageUpdate: boolean;
   private languageAlwaysBeenStyle: boolean;
   private isReady = false;
@@ -1082,6 +1115,12 @@ export class Map extends maplibregl.Map {
         this.minimap = new Minimap({}, options);
         this.addControl(this.minimap, minimap);
       }
+
+      // routing waits for a parsed style: its layers are inserted before the
+      // style's first symbol layer, which cannot be resolved any earlier
+      if (options.routing) {
+        this.enableRouting(typeof options.routing === "object" ? options.routing : {});
+      }
     });
 
     const terrainCallback = (evt: LoadWithTerrainEvent) => {
@@ -1455,6 +1494,62 @@ export class Map extends maplibregl.Map {
   removeLayer(id: string): this {
     this.minimap?.removeLayer(id);
     return super.removeLayer(id);
+  }
+
+  /**
+   * Enables routing on this map and returns the session that drives it.
+   *
+   * Idempotent: calling it again returns the existing session rather than
+   * replacing it, so the options are applied only the first time. Use the
+   * returned {@link RoutingController} to set waypoints, pick a profile and
+   * listen for results.
+   *
+   * @param options - Routing configuration. See {@link RoutingOptions}.
+   * @returns The routing session for this map.
+   *
+   * @remarks
+   * **API Key Usage**: each computed route counts against your MapTiler Cloud
+   * API key quota.
+   *
+   * @example
+   * ```ts
+   * const routing = map.enableRouting({ profile: "bicycle" });
+   * routing.setWaypoints([[8.54, 47.37], [12.87, 50.23]]);
+   * routing.on("routingroutes", (event) => console.log(event.routes));
+   * ```
+   */
+  enableRouting(options: RoutingOptions = {}): RoutingController {
+    if (this.routingController) return this.routingController;
+
+    this.routingController = new RoutingController(this, options);
+
+    try {
+      this.telemetry.registerModule("routing", ROUTING_VERSION);
+    } catch {} // telemetry must never break the map
+
+    return this.routingController;
+  }
+
+  /**
+   * The routing session for this map, or `undefined` when routing has not been
+   * enabled.
+   *
+   * @see {@link Map.enableRouting}
+   */
+  getRouting(): RoutingController | undefined {
+    return this.routingController;
+  }
+
+  /**
+   * Disables routing: removes the drawn route, its waypoint markers and every
+   * listener the session installed.
+   *
+   * @returns `this`
+   */
+  disableRouting(): this {
+    this.routingController?.destroy();
+    this.routingController = undefined;
+    return this;
   }
 
   /**
