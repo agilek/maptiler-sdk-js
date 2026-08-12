@@ -10,6 +10,7 @@ export default defineConfig({
         rtlTextPlugin: 'public/rtlTextPlugin.html',
         animatedRouteLayer: 'public/animatedRouteLayer.html',
         haloSpace: 'public/haloSpace.html',
+        routing: 'public/routing.html',
       },
     },
   },

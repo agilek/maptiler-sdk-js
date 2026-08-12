@@ -11,6 +11,8 @@ declare global {
     setFixtureMapStyle: (style: string | StyleSpecificationWithMetaData) => Promise<void>;
     __MT_SDK_VERSION__: string;
     __MT_NODE_ENV__: string | undefined;
+    /** Routing events recorded by the routing fixture, so tests can assert on behavior. */
+    __routingEvents: { type: string; selectedIndex?: number }[];
     __testUtils?: {
       getHaloConfig: () => any;
       getSpaceConfig: () => any;

@@ -64,7 +64,11 @@ export default async function loadFixtureAndGetMapHandle({
     }
   });
 
-  await page.goto([`http://localhost:5173/${fixture}.html`, queryParams && new URLSearchParams(queryParams).toString()].filter(Boolean).join("?"), {
+  // Vite picks the next free port when 5173 is taken, which happens as soon as
+  // another project is being served locally; E2E_PORT points the tests at it.
+  const port = process.env.E2E_PORT ?? "5173";
+
+  await page.goto([`http://localhost:${port}/${fixture}.html`, queryParams && new URLSearchParams(queryParams).toString()].filter(Boolean).join("?"), {
     waitUntil,
   });
 

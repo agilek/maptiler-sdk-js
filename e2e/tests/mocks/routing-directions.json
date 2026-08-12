@@ -1,0 +1,380 @@
+{
+  "route": {
+    "summary": {
+      "cost": 24360,
+      "bbox": [
+        8.5417,
+        47.3769,
+        12.8724,
+        50.2329
+      ],
+      "totalTime": 24360,
+      "totalLength": 598,
+      "highway": true,
+      "toll": true
+    },
+    "legs": [
+      {
+        "summary": {
+          "cost": 24360,
+          "bbox": [
+            8.5,
+            47.3,
+            12.9,
+            50.7
+          ],
+          "totalTime": 24360,
+          "totalLength": 598,
+          "highway": true,
+          "toll": true
+        },
+        "geometry": "g_tjyAg_jhO_ylP{ylY_ylP{ylY_ylP{ylY_ylP{ylY_ylP{ylY_ylP{ylY_ylP{ylY_ylP{ylY_ylP{ylY_ylP{ylY",
+        "steps": [
+          {
+            "time": 600,
+            "length": 12.5,
+            "streetName": "A9",
+            "maneuver": {
+              "instruction": "Step 1",
+              "type": "start"
+            },
+            "beginIndex": 0,
+            "endIndex": 2,
+            "details": {
+              "highway": true,
+              "toll": false
+            }
+          },
+          {
+            "time": 600,
+            "length": 12.5,
+            "streetName": "A9",
+            "maneuver": {
+              "instruction": "Step 2",
+              "type": "leftTurn"
+            },
+            "beginIndex": 2,
+            "endIndex": 4,
+            "details": {
+              "highway": true,
+              "toll": true
+            }
+          },
+          {
+            "time": 600,
+            "length": 12.5,
+            "streetName": "A9",
+            "maneuver": {
+              "instruction": "Step 3",
+              "type": "rightTurn"
+            },
+            "beginIndex": 4,
+            "endIndex": 6,
+            "details": {
+              "highway": true,
+              "toll": false
+            }
+          },
+          {
+            "time": 600,
+            "length": 12.5,
+            "streetName": "A9",
+            "maneuver": {
+              "instruction": "Step 4",
+              "type": "leftTurn"
+            },
+            "beginIndex": 6,
+            "endIndex": 8,
+            "details": {
+              "highway": true,
+              "toll": false
+            }
+          },
+          {
+            "time": 600,
+            "length": 12.5,
+            "streetName": "A9",
+            "maneuver": {
+              "instruction": "Step 5",
+              "type": "rightTurn"
+            },
+            "beginIndex": 8,
+            "endIndex": 10,
+            "details": {
+              "highway": true,
+              "toll": false
+            }
+          },
+          {
+            "time": 600,
+            "length": 12.5,
+            "streetName": "A9",
+            "maneuver": {
+              "instruction": "Step 6",
+              "type": "destination"
+            },
+            "beginIndex": 10,
+            "endIndex": 12,
+            "details": {
+              "highway": true,
+              "toll": false
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "alternates": [
+    {
+      "summary": {
+        "cost": 24480,
+        "bbox": [
+          8.5417,
+          47.3769,
+          12.8724,
+          50.6
+        ],
+        "totalTime": 24480,
+        "totalLength": 605,
+        "highway": true
+      },
+      "legs": [
+        {
+          "summary": {
+            "cost": 24480,
+            "bbox": [
+              8.5,
+              47.3,
+              12.9,
+              50.7
+            ],
+            "totalTime": 24480,
+            "totalLength": 605,
+            "highway": true
+          },
+          "geometry": "g_tjyAg_jhOw_jf@wg_]w_jf@wg_]w_jf@wg_]w_jf@wg_]w_jf@wg_]vknC_lzUvknC_lzUvknC_lzUvknC_lzUvknC_lzU",
+          "steps": [
+            {
+              "time": 600,
+              "length": 12.5,
+              "streetName": "A9",
+              "maneuver": {
+                "instruction": "Step 1",
+                "type": "start"
+              },
+              "beginIndex": 0,
+              "endIndex": 2,
+              "details": {
+                "highway": true,
+                "toll": false
+              }
+            },
+            {
+              "time": 600,
+              "length": 12.5,
+              "streetName": "A9",
+              "maneuver": {
+                "instruction": "Step 2",
+                "type": "leftTurn"
+              },
+              "beginIndex": 2,
+              "endIndex": 4,
+              "details": {
+                "highway": true,
+                "toll": true
+              }
+            },
+            {
+              "time": 600,
+              "length": 12.5,
+              "streetName": "A9",
+              "maneuver": {
+                "instruction": "Step 3",
+                "type": "rightTurn"
+              },
+              "beginIndex": 4,
+              "endIndex": 6,
+              "details": {
+                "highway": true,
+                "toll": false
+              }
+            },
+            {
+              "time": 600,
+              "length": 12.5,
+              "streetName": "A9",
+              "maneuver": {
+                "instruction": "Step 4",
+                "type": "leftTurn"
+              },
+              "beginIndex": 6,
+              "endIndex": 8,
+              "details": {
+                "highway": true,
+                "toll": false
+              }
+            },
+            {
+              "time": 600,
+              "length": 12.5,
+              "streetName": "A9",
+              "maneuver": {
+                "instruction": "Step 5",
+                "type": "rightTurn"
+              },
+              "beginIndex": 8,
+              "endIndex": 10,
+              "details": {
+                "highway": true,
+                "toll": false
+              }
+            },
+            {
+              "time": 600,
+              "length": 12.5,
+              "streetName": "A9",
+              "maneuver": {
+                "instruction": "Step 6",
+                "type": "destination"
+              },
+              "beginIndex": 10,
+              "endIndex": 12,
+              "details": {
+                "highway": true,
+                "toll": false
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "summary": {
+        "cost": 25020,
+        "bbox": [
+          8.5417,
+          47.3769,
+          12.8724,
+          50.2329
+        ],
+        "totalTime": 25020,
+        "totalLength": 617,
+        "highway": true,
+        "ferry": true
+      },
+      "legs": [
+        {
+          "summary": {
+            "cost": 25020,
+            "bbox": [
+              8.5,
+              47.3,
+              12.9,
+              50.7
+            ],
+            "totalTime": 25020,
+            "totalLength": 617,
+            "highway": true,
+            "ferry": true
+          },
+          "geometry": "g_tjyAg_jhOwaiHwsid@waiHwsid@waiHwsid@waiHwsid@waiHwsid@gppX_`pNgppX_`pNgppX_`pNgppX_`pNgppX_`pN",
+          "steps": [
+            {
+              "time": 600,
+              "length": 12.5,
+              "streetName": "A9",
+              "maneuver": {
+                "instruction": "Step 1",
+                "type": "start"
+              },
+              "beginIndex": 0,
+              "endIndex": 2,
+              "details": {
+                "highway": true,
+                "toll": false
+              }
+            },
+            {
+              "time": 600,
+              "length": 12.5,
+              "streetName": "A9",
+              "maneuver": {
+                "instruction": "Step 2",
+                "type": "leftTurn"
+              },
+              "beginIndex": 2,
+              "endIndex": 4,
+              "details": {
+                "highway": true,
+                "toll": true
+              }
+            },
+            {
+              "time": 600,
+              "length": 12.5,
+              "streetName": "A9",
+              "maneuver": {
+                "instruction": "Step 3",
+                "type": "rightTurn"
+              },
+              "beginIndex": 4,
+              "endIndex": 6,
+              "details": {
+                "highway": true,
+                "toll": false
+              }
+            },
+            {
+              "time": 600,
+              "length": 12.5,
+              "streetName": "A9",
+              "maneuver": {
+                "instruction": "Step 4",
+                "type": "leftTurn"
+              },
+              "beginIndex": 6,
+              "endIndex": 8,
+              "details": {
+                "highway": true,
+                "toll": false
+              }
+            },
+            {
+              "time": 600,
+              "length": 12.5,
+              "streetName": "A9",
+              "maneuver": {
+                "instruction": "Step 5",
+                "type": "rightTurn"
+              },
+              "beginIndex": 8,
+              "endIndex": 10,
+              "details": {
+                "highway": true,
+                "toll": false
+              }
+            },
+            {
+              "time": 600,
+              "length": 12.5,
+              "streetName": "A9",
+              "maneuver": {
+                "instruction": "Step 6",
+                "type": "destination"
+              },
+              "beginIndex": 10,
+              "endIndex": 12,
+              "details": {
+                "highway": true,
+                "toll": false
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "attribution": "© MapTiler © OpenStreetMap contributors",
+  "units": "km",
+  "language": "en"
+}
