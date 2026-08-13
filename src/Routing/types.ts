@@ -440,6 +440,26 @@ export type RouteRenderOptions = {
   hitTestWidth?: number;
 };
 
+/**
+ * The badge drawn on each route showing its travel time, positioned halfway
+ * along the line.
+ */
+export type RouteLabelOptions = {
+  /**
+   * Text of one badge.
+   *
+   * @param route - The route the badge belongs to.
+   * @param index - Its index in the drawn list.
+   * @param selected - Whether it is the selected route.
+   * @returns The label. Return an empty string to omit this badge.
+   *
+   * Defaults to the route's travel time.
+   */
+  format?: (route: Route, index: number, selected: boolean) => string;
+  /** Whether clicking a badge selects its route. Defaults to `true`. */
+  selectOnClick?: boolean;
+};
+
 /** How waypoints are drawn on the map. */
 export type RouteWaypointRenderOptions = {
   /** Base MapLibre marker options applied to every waypoint marker. */
@@ -499,6 +519,13 @@ export type RoutingOptions = {
   render?: RouteRenderOptions | false;
   /** Waypoint marker rendering. `false` draws no waypoint markers. */
   waypointMarkers?: RouteWaypointRenderOptions | false;
+  /**
+   * The travel-time badge drawn halfway along each route. `false` draws none.
+   *
+   * Badges are how a user tells alternates apart on the map itself, so they
+   * are shown by default.
+   */
+  routeLabels?: RouteLabelOptions | false;
   /** Camera fit applied once per successful response. `false` never moves the camera. */
   fitBounds?: RouteFitBoundsOptions | false;
   /** Whether clicking an alternate's line selects it. Defaults to `true`. */

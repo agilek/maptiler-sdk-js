@@ -78,7 +78,7 @@ export class RoutingController extends maplibregl.Evented {
     this.map = map;
     this.options = resolveRoutingOptions(options);
 
-    this.renderer = new RouteRenderer(map, this.options.render, this.options.waypointMarkers, {
+    this.renderer = new RouteRenderer(map, this.options.render, this.options.waypointMarkers, this.options.routeLabels, {
       onRouteClick: (index) => {
         if (this.options.selectRouteOnClick) this.selectRoute(index);
       },

@@ -7,6 +7,7 @@
   - `MaptilerRoutingControl` is an optional panel over the same session: transport modes, waypoints with place search, filters, route alternatives and turn-by-turn directions. Add it with `map.addControl` or the `routingControl` map option.
   - `routingconfig` fires when the session's profile, units, profile options, times or alternates change, so a UI (the built-in panel, or your own) follows the session rather than drifting from it.
   - `modeDisplay` chooses what a transport tab shows: `both`, `icon` only (the name becomes its accessible name), `label` only, or `none`. `showSingleMode: false` drops the switcher when a single mode is left. In every case where the switcher is not shown it is removed rather than hidden, so no container background or spacing remains.
+  - Each route carries a travel-time badge halfway along its line, matching the Map Controls UI design; clicking one selects that route. Configure or disable it with `routeLabels`.
   - The panel is customisable through options (which transport modes and filters exist, units, alternates, interactions), CSS custom properties and a documented class-name contract, `labels` and `formatters` for localization, and `renderers.*` hooks that replace one subsection at a time.
   - `routing.directions()` exposes the API on its own, alongside helpers for decoding polylines, joining leg geometry, flattening steps and formatting distances and durations.
   - Enable it with `routing: true` / `routingControl: true` on the map, or per call. Each computed route counts against your MapTiler Cloud API key quota.

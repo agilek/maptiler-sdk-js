@@ -1,10 +1,12 @@
 import { config } from "../config";
+import { formatRouteDuration } from "./routing-format";
 import type {
   BicycleProfileOptions,
   CarProfileOptions,
   PedestrianProfileOptions,
   RouteCasingStyle,
   RouteFitBoundsOptions,
+  RouteLabelOptions,
   RouteLineStyle,
   RouteWaypointRenderOptions,
   RoutingOptions,
@@ -147,6 +149,12 @@ export type ResolvedWaypointMarkerOptions = Required<RouteWaypointRenderOptions>
   enabled: boolean;
 };
 
+/** Route badge options after defaults have been merged in. */
+export type ResolvedRouteLabelOptions = Required<RouteLabelOptions> & {
+  /** `false` when the consumer opted out of the badges entirely. */
+  enabled: boolean;
+};
+
 /** {@link RoutingOptions} after defaults and global `config` have been applied. */
 export type ResolvedRoutingOptions = {
   profile: RoutingProfile;
@@ -160,6 +168,7 @@ export type ResolvedRoutingOptions = {
   arrivalTime?: string;
   render: ResolvedRenderOptions;
   waypointMarkers: ResolvedWaypointMarkerOptions;
+  routeLabels: ResolvedRouteLabelOptions;
   fitBounds: RouteFitBoundsOptions | false;
   selectRouteOnClick: boolean;
   autoCalculate: boolean;
@@ -181,6 +190,7 @@ export type ResolvedRoutingOptions = {
 export function resolveRoutingOptions(options: RoutingOptions = {}): ResolvedRoutingOptions {
   const render = options.render === false ? {} : (options.render ?? {});
   const waypointMarkers = options.waypointMarkers === false ? {} : (options.waypointMarkers ?? {});
+  const routeLabels = options.routeLabels === false ? {} : (options.routeLabels ?? {});
 
   return {
     profile: options.profile ?? "car",
@@ -209,6 +219,11 @@ export function resolveRoutingOptions(options: RoutingOptions = {}): ResolvedRou
       origin: waypointMarkers.origin ?? {},
       destination: waypointMarkers.destination ?? {},
       draggable: waypointMarkers.draggable ?? true,
+    },
+    routeLabels: {
+      enabled: options.routeLabels !== false,
+      format: routeLabels.format ?? ((route) => formatRouteDuration(route.summary.totalTime)),
+      selectOnClick: routeLabels.selectOnClick ?? true,
     },
     fitBounds: options.fitBounds === false ? false : { ...DEFAULT_FIT_BOUNDS_OPTIONS, ...options.fitBounds },
     selectRouteOnClick: options.selectRouteOnClick ?? true,

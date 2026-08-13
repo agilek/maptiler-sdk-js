@@ -707,6 +707,39 @@
   mask-size: contain;
 }
 
+/* Route travel-time badge
+
+   Drawn on the map, not inside the panel, so it carries its own colours
+   rather than inheriting the panel's custom properties — a map has no panel
+   in the headless case. The values follow the Map Controls UI design
+   (RouteTime): 4px radius, 2px white border, 13px semi-bold white text, and a
+   lighter blue for the alternates. */
+
+.maptiler-routing-route-label {
+  --maptiler-routing-label-selected: #3170fe;
+  --maptiler-routing-label-alternate: #98b7ff;
+
+  padding: 2px 6px;
+  border: 2px solid #fff;
+  border-radius: 4px;
+  background: var(--maptiler-routing-label-alternate);
+  color: #fff;
+  font-family: var(--maptiler-routing-font-family, system-ui, -apple-system, "Segoe UI", sans-serif);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 4px 4px rgb(0 0 0 / 15%);
+  /* the alternates sit under the selected badge, which is the one being read */
+  z-index: 1;
+}
+
+.maptiler-routing-route-label[data-selected] {
+  background: var(--maptiler-routing-label-selected);
+  z-index: 2;
+}
+
 .maptiler-routing-sr-only {
   position: absolute;
   width: 1px;

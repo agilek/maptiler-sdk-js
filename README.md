@@ -2188,8 +2188,19 @@ map.enableRouting({
   },
   waypointMarkers: { draggable: true },
   fitBounds: { padding: 60, maxZoom: 14 },
+
+  // the travel-time badge drawn halfway along each route
+  routeLabels: {
+    format: (route, index, selected) => (selected ? `★ ${routing.formatRouteDuration(route.summary.totalTime)}` : ""),
+  },
 });
 ```
+
+Badges are shown by default — they are how a user tells alternates apart on the map itself — and
+clicking one selects its route. Pass `routeLabels: false` to draw none, or return an empty string
+from `format` to drop an individual badge. They are styled through the
+`.maptiler-routing-route-label` class (with `[data-selected]` for the chosen route), which follows
+the Map Controls UI design.
 
 The route survives style changes: the source and layers are re-added after every `setStyle`.
 

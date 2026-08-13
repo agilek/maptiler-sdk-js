@@ -2,9 +2,26 @@ import type { FeatureCollection, LineString } from "geojson";
 import type { GeoJSONSource, MapMouseEvent, MarkerOptions, StyleSpecification } from "maplibre-gl";
 import { Marker } from "../MLAdapters/Marker";
 import type { Map as SDKMap } from "../Map";
-import { ROUTE_HITBOX_LAYER_ID, ROUTE_LAYER_IDS, ROUTE_SOURCE_ID, type ResolvedRenderOptions, type ResolvedWaypointMarkerOptions } from "./routing-constants";
+import {
+  ROUTE_HITBOX_LAYER_ID,
+  ROUTE_LAYER_IDS,
+  ROUTE_SOURCE_ID,
+  type ResolvedRenderOptions,
+  type ResolvedRouteLabelOptions,
+  type ResolvedWaypointMarkerOptions,
+} from "./routing-constants";
 import { EMPTY_ROUTE_COLLECTION, buildRouteFeatureCollection, buildRouteLayers, firstSymbolLayerId, type RouteFeatureProperties } from "./routing-layers";
+import { getLineMidpoint, getRouteCoordinates } from "./routing-geometry";
 import type { Route, RoutingWaypoint } from "./types";
+
+/** Class of the travel-time badge. Part of the documented styling contract. */
+const ROUTE_LABEL_CLASS = "maptiler-routing-route-label";
+
+/** Reflects selection on a badge, which the stylesheet colours from. */
+function setLabelSelected(element: HTMLElement, selected: boolean): void {
+  if (selected) element.setAttribute("data-selected", "");
+  else element.removeAttribute("data-selected");
+}
 
 /** Callbacks the renderer raises for interactions on the map. */
 export type RouteRendererHandlers = {
@@ -28,6 +45,7 @@ export class RouteRenderer {
   private readonly handlers: RouteRendererHandlers;
   private render: ResolvedRenderOptions;
   private waypointMarkerOptions: ResolvedWaypointMarkerOptions;
+  private readonly routeLabelOptions: ResolvedRouteLabelOptions;
 
   /** The collection currently shown, kept so a style change can restore it. */
   private data: FeatureCollection<LineString, RouteFeatureProperties> = EMPTY_ROUTE_COLLECTION;
@@ -35,15 +53,19 @@ export class RouteRenderer {
   /** Waypoint markers, keyed by waypoint id. Owned and disposed explicitly. */
   private readonly markers = new Map<string, Marker>();
 
+  /** Travel-time badges, keyed by the index of the route they belong to. */
+  private readonly labels = new Map<number, { marker: Marker; element: HTMLElement }>();
+
   /** `true` once the source and layers have been added at least once. */
   private attached = false;
 
   private destroyed = false;
 
-  constructor(map: SDKMap, render: ResolvedRenderOptions, waypointMarkers: ResolvedWaypointMarkerOptions, handlers: RouteRendererHandlers) {
+  constructor(map: SDKMap, render: ResolvedRenderOptions, waypointMarkers: ResolvedWaypointMarkerOptions, routeLabels: ResolvedRouteLabelOptions, handlers: RouteRendererHandlers) {
     this.map = map;
     this.render = render;
     this.waypointMarkerOptions = waypointMarkers;
+    this.routeLabelOptions = routeLabels;
     this.handlers = handlers;
 
     // MapLibre drops every source and layer on a style swap, so both events
@@ -134,6 +156,7 @@ export class RouteRenderer {
     this.data = buildRouteFeatureCollection(routes, selectedIndex);
     this.attach();
     this.setSourceData();
+    this.setRouteLabels(routes, selectedIndex);
   }
 
   /** Removes every drawn route, keeping the source and layers in place. */
@@ -142,6 +165,7 @@ export class RouteRenderer {
 
     this.data = EMPTY_ROUTE_COLLECTION;
     this.setSourceData();
+    this.clearRouteLabels();
   }
 
   /** Replaces the paint options and redraws with them. */
@@ -150,6 +174,77 @@ export class RouteRenderer {
     this.detachLayers();
     this.attached = false;
     this.attach();
+  }
+
+  //#endregion
+
+  //#region Route labels
+
+  /**
+   * Draws one travel-time badge per route, halfway along its line.
+   *
+   * Badges are reused by index across renders — a selection change only
+   * rewrites the text and the state attribute, so nothing flickers and the
+   * markers are not torn down and rebuilt on every pass.
+   */
+  private setRouteLabels(routes: Route[], selectedIndex: number): void {
+    if (!this.routeLabelOptions.enabled) {
+      this.clearRouteLabels();
+      return;
+    }
+
+    const drawn = new Set<number>();
+
+    routes.forEach((route, index) => {
+      const midpoint = getLineMidpoint(getRouteCoordinates(route));
+      const text = this.routeLabelOptions.format(route, index, index === selectedIndex);
+
+      // no midpoint means no usable geometry, and an empty label is how a
+      // consumer opts one badge out
+      if (!midpoint || text === "") return;
+
+      drawn.add(index);
+      const existing = this.labels.get(index);
+      const entry = existing ?? this.createRouteLabel(index);
+
+      entry.element.textContent = text;
+      setLabelSelected(entry.element, index === selectedIndex);
+      entry.marker.setLngLat(midpoint);
+
+      if (!existing) {
+        entry.marker.addTo(this.map);
+        this.labels.set(index, entry);
+      }
+    });
+
+    // drop badges for routes that are no longer drawn
+    for (const [index, entry] of this.labels) {
+      if (drawn.has(index)) continue;
+      entry.marker.remove();
+      this.labels.delete(index);
+    }
+  }
+
+  private createRouteLabel(index: number): { marker: Marker; element: HTMLElement } {
+    const element = document.createElement("div");
+    element.className = ROUTE_LABEL_CLASS;
+    element.dataset.index = index.toString();
+
+    if (this.routeLabelOptions.selectOnClick) {
+      element.addEventListener("click", (event) => {
+        // the badge sits over the line; without this the map click handler
+        // would also see it and, in a routing UI, append a waypoint
+        event.stopPropagation();
+        this.handlers.onRouteClick(index);
+      });
+    }
+
+    return { marker: new Marker({ element, anchor: "center" }), element };
+  }
+
+  private clearRouteLabels(): void {
+    for (const entry of this.labels.values()) entry.marker.remove();
+    this.labels.clear();
   }
 
   //#endregion
@@ -261,6 +356,7 @@ export class RouteRenderer {
     }
 
     this.clearMarkers();
+    this.clearRouteLabels();
 
     // the style may already be gone when the map itself is being removed
     try {
