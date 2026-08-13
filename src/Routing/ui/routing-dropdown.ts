@@ -1,11 +1,6 @@
+import { placeFloating } from "./routing-floating";
 import { RC } from "./routing-ui-defaults";
 import { el, icon, setBooleanAttribute, setDataFlag } from "./routing-ui-dom";
-
-/** Gap between a pill and the menu it opens. */
-const MENU_GAP = 4;
-
-/** How close to the edge of the viewport a menu may come. */
-const VIEWPORT_MARGIN = 8;
 
 /**
  * A filter dropdown: a pill that opens a panel below it.
@@ -42,9 +37,28 @@ export class Dropdown {
     this.close();
   };
 
-  /** Closing beats trying to keep a viewport-positioned menu glued to its pill. */
+  /**
+   * Follows the pill when the panel scrolls under it.
+   *
+   * Closing would be simpler, but the panel scrolls by itself: switching an
+   * avoidance replaces the results with placeholders, which changes the body's
+   * height, which scrolls it — and the menu would vanish on the first switch
+   * the user flicked. It closes only once its pill has been scrolled out of
+   * the panel.
+   */
   private readonly onScroll = (): void => {
-    this.close();
+    const parent = this.scrollParent();
+    const anchor = this.toggle.getBoundingClientRect();
+
+    if (parent) {
+      const bounds = parent.getBoundingClientRect();
+      if (anchor.bottom < bounds.top || anchor.top > bounds.bottom) {
+        this.close();
+        return;
+      }
+    }
+
+    this.position();
   };
 
   constructor(label: string, ariaLabel: string) {
@@ -117,45 +131,8 @@ export class Dropdown {
     this.scrollParent()?.removeEventListener("scroll", this.onScroll);
   }
 
-  /**
-   * Places the menu under its pill, in viewport coordinates.
-   *
-   * The panel body scrolls, which would clip a menu positioned inside it — the
-   * design has them overlapping whatever is below. Fixed positioning is what
-   * takes the menu out of that box; it is computed here rather than in CSS
-   * because only the browser knows where the pill ended up after wrapping.
-   */
   private position(): void {
-    // MapLibre gives every `.maplibregl-ctrl` a `transform: translate(0)`,
-    // which makes the control root — not the viewport — the containing block
-    // for a fixed child. Rather than guess which ancestor that is, the menu is
-    // parked at the origin and measured: wherever it lands is the origin the
-    // coordinates below are relative to.
-    const anchor = this.toggle.getBoundingClientRect();
-    this.menu.style.minWidth = `${anchor.width.toString()}px`;
-
-    this.menu.style.left = "0px";
-    this.menu.style.top = "0px";
-    const origin = this.menu.getBoundingClientRect();
-    const { width, height } = origin;
-
-    // the last pill in the row sits against the panel's right edge, and its
-    // menu is wider than it is — left-aligned it would open off-screen, so it
-    // is pushed back just far enough to fit
-    let left = anchor.left;
-    if (left + width > window.innerWidth - VIEWPORT_MARGIN) {
-      left = Math.max(VIEWPORT_MARGIN, window.innerWidth - VIEWPORT_MARGIN - width);
-    }
-
-    // and a tall menu low on the screen opens upwards instead, when there is
-    // more room above the pill than below it
-    let top = anchor.bottom + MENU_GAP;
-    if (top + height > window.innerHeight - VIEWPORT_MARGIN && anchor.top > window.innerHeight - anchor.bottom) {
-      top = Math.max(VIEWPORT_MARGIN, anchor.top - MENU_GAP - height);
-    }
-
-    this.menu.style.left = `${(left - origin.left).toString()}px`;
-    this.menu.style.top = `${(top - origin.top).toString()}px`;
+    placeFloating(this.toggle, this.menu);
   }
 
   /** Nearest scrollable ancestor — the panel body, in practice. */

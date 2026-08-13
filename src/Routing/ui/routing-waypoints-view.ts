@@ -1,6 +1,7 @@
 import type { GeocodingFeature } from "@maptiler/client";
 import type { RoutingWaypoint } from "../types";
 import type { RoutingPanelContext } from "./routing-ui-context";
+import { placeFloating } from "./routing-floating";
 import { RC } from "./routing-ui-defaults";
 import { button, el, icon, setBooleanAttribute, setDataFlag } from "./routing-ui-dom";
 
@@ -12,6 +13,15 @@ type WaypointRow = {
   /** Index of the highlighted suggestion, or `-1` when none is. */
   activeSuggestion: number;
   suggestions: GeocodingFeature[];
+  /**
+   * `true` while the visitor is part-way through typing something.
+   *
+   * A render must not overwrite a half-typed query, but it must overwrite
+   * everything else — including the text the panel itself put there, like
+   * "Locating…", which the field would otherwise keep showing long after the
+   * position arrived, because the field is still focused.
+   */
+  editing: boolean;
 };
 
 /** Unique-enough id source for the `aria-controls` / `aria-activedescendant` wiring. */
@@ -96,6 +106,39 @@ export class WaypointsView {
     setBooleanAttribute(this.addStopButton, "aria-disabled", waypoints.length >= maxWaypoints);
   }
 
+  /**
+   * Drags the row rather than the handle.
+   *
+   * The browser would otherwise use the handle alone, a 24px square, which
+   * says nothing about what is being moved. The picture is a copy of the row
+   * without its delete button — there is nothing to delete mid-drag — on a
+   * solid background, since the real row is translucent while it moves.
+   *
+   * The copy lives inside the panel so the panel's own styles apply to it, and
+   * is parked off-screen: `setDragImage` needs something rendered, and the
+   * browser has taken its snapshot by the time the frame ends.
+   */
+  private setRowDragImage(transfer: DataTransfer, row: WaypointRow, event: DragEvent): void {
+    const remove = row.element.querySelector<HTMLElement>(`.${RC.waypointRemove}`);
+    const gap = parseFloat(getComputedStyle(row.element).gap) || 0;
+    const width = row.element.getBoundingClientRect().width - (remove ? remove.getBoundingClientRect().width + gap : 0);
+
+    const ghost = row.element.cloneNode(true) as HTMLElement;
+    ghost.querySelector(`.${RC.waypointRemove}`)?.remove();
+    ghost.querySelector(`.${RC.suggestions}`)?.remove();
+    ghost.classList.add(RC.waypointGhost);
+    ghost.style.width = `${width.toString()}px`;
+
+    this.element.append(ghost);
+    const origin = row.element.getBoundingClientRect();
+    transfer.setDragImage(ghost, event.clientX - origin.left, event.clientY - origin.top);
+
+    // the snapshot is taken synchronously; the copy is only needed until then
+    requestAnimationFrame(() => {
+      ghost.remove();
+    });
+  }
+
   /** Shows the in-field clear button only when there is something to clear. */
   private syncClearButton(row: WaypointRow): void {
     const clear = row.element.querySelector<HTMLButtonElement>(`.${RC.waypointClear}`);
@@ -119,8 +162,9 @@ export class WaypointsView {
     row.input.readOnly = !search.enabled;
     row.input.draggable = false;
 
-    // never write over what the user is typing
-    if (document.activeElement !== row.input) {
+    // never write over what the visitor is typing — but do replace anything
+    // else, whoever put it there
+    if (!row.editing) {
       row.input.value = waypoint.label ?? (waypoint.lngLat ? formatCoordinate(waypoint.lngLat) : "");
     }
 
@@ -182,7 +226,7 @@ export class WaypointsView {
     field.append(pin, input, clear, list);
     element.append(handle, field, remove);
 
-    const row: WaypointRow = { element, input, list, activeSuggestion: -1, suggestions: [] };
+    const row: WaypointRow = { element, input, list, activeSuggestion: -1, suggestions: [], editing: false };
     this.rows.set(waypoint.id, row);
 
     this.wireRow(row, waypoint.id);
@@ -200,6 +244,7 @@ export class WaypointsView {
     row.element.querySelector(`.${RC.waypointClear}`)?.addEventListener("click", () => {
       // clears the field without removing the row: the stop stays, waiting for
       // a new value
+      row.editing = false;
       row.input.value = "";
       this.syncClearButton(row);
       this.closeSuggestions(row);
@@ -208,6 +253,7 @@ export class WaypointsView {
     });
 
     row.input.addEventListener("input", () => {
+      row.editing = true;
       this.syncClearButton(row);
       if (!search.enabled) return;
       const { lng, lat } = this.context.map.getCenter();
@@ -229,6 +275,10 @@ export class WaypointsView {
     });
 
     row.input.addEventListener("blur", () => {
+      // whatever was being typed is no longer being typed, so the next render
+      // is free to show what the waypoint actually holds
+      row.editing = false;
+
       // let a pointerdown on a suggestion win the race with blur
       setTimeout(() => {
         this.closeSuggestions(row);
@@ -248,7 +298,10 @@ export class WaypointsView {
     handle?.addEventListener("dragstart", (event) => {
       this.dragIndex = this.indexOf(id);
       setDataFlag(row.element, "dragging", true);
-      (event as DragEvent).dataTransfer?.setData("text/plain", id);
+
+      const transfer = (event as DragEvent).dataTransfer;
+      transfer?.setData("text/plain", id);
+      if (transfer) this.setRowDragImage(transfer, row, event as DragEvent);
     });
 
     handle?.addEventListener("dragend", () => {
@@ -369,6 +422,7 @@ export class WaypointsView {
       return;
     }
 
+    row.editing = false;
     row.input.value = labels.locating;
     this.syncClearButton(row);
 
@@ -381,6 +435,7 @@ export class WaypointsView {
       },
       () => {
         // permission denied or unavailable: leave the field as the user found it
+        row.editing = false;
         row.input.value = "";
         this.syncClearButton(row);
         console.warn("[MaptilerRoutingControl]: The browser could not provide a location.");
@@ -440,15 +495,52 @@ export class WaypointsView {
   private openSuggestions(row: WaypointRow): void {
     row.list.hidden = false;
     row.input.setAttribute("aria-expanded", "true");
+    // placed against the viewport rather than the field: the panel body
+    // scrolls, and a list positioned inside it is cut off at the panel's edge.
+    // Repeated on every render, since the list changes height as the visitor
+    // types and may have to flip above the field.
+    placeFloating(row.element.querySelector(`.${RC.waypointField}`) ?? row.input, row.list, true);
+    this.scrollParent()?.addEventListener("scroll", this.onPanelScroll, { passive: true });
   }
 
   /** Closes one row's suggestion list. */
   private closeSuggestions(row: WaypointRow): void {
+    if (![...this.rows.values()].some((other) => other !== row && !other.list.hidden)) {
+      this.scrollParent()?.removeEventListener("scroll", this.onPanelScroll);
+    }
+
     row.list.hidden = true;
     row.list.replaceChildren();
     row.activeSuggestion = -1;
     row.input.setAttribute("aria-expanded", "false");
     row.input.removeAttribute("aria-activedescendant");
+  }
+
+  /** The list is placed against the viewport, so it follows its field. */
+  private readonly onPanelScroll = (): void => {
+    const parent = this.scrollParent();
+    const bounds = parent?.getBoundingClientRect();
+
+    for (const row of this.rows.values()) {
+      if (row.list.hidden) continue;
+
+      const field = row.element.querySelector<HTMLElement>(`.${RC.waypointField}`) ?? row.input;
+      const anchor = field.getBoundingClientRect();
+
+      // once its field has scrolled out of the panel there is nothing left to
+      // attach the list to
+      if (bounds && (anchor.bottom < bounds.top || anchor.top > bounds.bottom)) {
+        this.closeSuggestions(row);
+        continue;
+      }
+
+      placeFloating(field, row.list, true);
+    }
+  };
+
+  /** The panel body, which is what scrolls under an open list. */
+  private scrollParent(): HTMLElement | null {
+    return this.element.closest<HTMLElement>(`.${RC.body}`);
   }
 
   /** Closes every open suggestion list, e.g. when the map is interacted with. */
@@ -460,6 +552,7 @@ export class WaypointsView {
     const { formatters } = this.context.options;
     const [lon, lat] = feature.center;
 
+    row.editing = false;
     row.input.value = formatters.waypointLabel(feature);
     this.closeSuggestions(row);
     this.context.routing.updateWaypoint(id, { lngLat: [lon, lat], label: formatters.waypointLabel(feature) });

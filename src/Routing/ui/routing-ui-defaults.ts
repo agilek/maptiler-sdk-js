@@ -41,6 +41,7 @@ export const RC = Object.freeze({
   waypointInput: "maptiler-routing-waypoint-input",
   waypointClear: "maptiler-routing-waypoint-clear",
   waypointRemove: "maptiler-routing-waypoint-remove",
+  waypointGhost: "maptiler-routing-waypoint-ghost",
 
   suggestions: "maptiler-routing-suggestions",
   suggestion: "maptiler-routing-suggestion",
@@ -127,6 +128,7 @@ export const CSS_VARS: Readonly<Record<keyof RoutingControlTheme, string>> = Obj
   maxHeight: "--maptiler-routing-max-height",
   fontFamily: "--maptiler-routing-font-family",
   shadow: "--maptiler-routing-shadow",
+  listShadow: "--maptiler-routing-list-shadow",
 });
 
 //#endregion

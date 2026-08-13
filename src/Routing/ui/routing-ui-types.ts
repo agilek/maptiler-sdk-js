@@ -316,6 +316,8 @@ export type RoutingControlTheme = {
   fontFamily?: string;
   /** Panel drop shadow. */
   shadow?: string;
+  /** Drop shadow of the search result list, which floats over the map. */
+  listShadow?: string;
 };
 
 //#endregion

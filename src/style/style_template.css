@@ -219,6 +219,8 @@
   /* RouteLoading: the two ends of the skeleton's shimmer */
   --maptiler-routing-skeleton-color: #e4ecff;
   --maptiler-routing-skeleton-highlight: #f1f5ff;
+  /* SearchResultList */
+  --maptiler-routing-list-shadow: 0 10px 35px rgb(51 51 89 / 15%);
   --maptiler-routing-icon-size: 18px;
   --maptiler-routing-radius: 10px;
   --maptiler-routing-radius-small: 4px;
@@ -350,6 +352,15 @@
   cursor: default;
 }
 
+/* MapLibre tints every button inside a `.maplibregl-ctrl` on hover, which is
+   right for its own square controls and wrong for a panel full of rows and
+   cards — it was painting a grey rectangle over the text of a route card. The
+   selector matches its weight and comes later, so it wins; each component
+   below then states the hover it does want. */
+.maptiler-routing button:not(:disabled):hover {
+  background-color: transparent;
+}
+
 .maptiler-routing-waypoint-remove,
 .maptiler-routing-waypoint-handle,
 .maptiler-routing-detail-back {
@@ -375,7 +386,17 @@
   height: 32px;
 }
 
-.maptiler-routing button.maptiler-routing-waypoint-remove:hover:not(:disabled),
+/* _DeleteButton: 32px square, a 24px glyph, and on hover the #f2f6ff tint
+   with a 4px radius — the glyph keeps its muted colour throughout. */
+.maptiler-routing button.maptiler-routing-waypoint-remove:hover:not(:disabled) {
+  background: var(--maptiler-routing-surface-alt);
+}
+
+.maptiler-routing-waypoint-remove .maptiler-routing-icon {
+  width: 24px;
+  height: 24px;
+}
+
 .maptiler-routing button.maptiler-routing-detail-back:hover {
   background: var(--maptiler-routing-surface-alt);
   color: var(--maptiler-routing-text-color);
@@ -464,6 +485,20 @@
   opacity: 0.5;
 }
 
+/* The picture dragged under the cursor: the row on an opaque background,
+   parked off-screen while the browser takes its snapshot. */
+.maptiler-routing-waypoint-ghost {
+  position: fixed;
+  top: -1000px;
+  left: -1000px;
+  margin: 0;
+  padding: 4px;
+  border-radius: var(--maptiler-routing-radius);
+  background: var(--maptiler-routing-surface);
+  box-shadow: var(--maptiler-routing-shadow);
+  pointer-events: none;
+}
+
 /* Search field states: white with a #c1cfe4 border by default, a #f2f6ff tint
    on hover, and the accent border while focused — with a clear button inside
    the field as soon as it holds a value. */
@@ -501,12 +536,18 @@
   align-items: center;
   justify-content: center;
   flex: none;
-  width: 16px;
-  height: 16px;
+  /* 2px of room around the 16px glyph, so the hover has something to fill.
+     The negative margin keeps the glyph itself where the design puts it —
+     a fixed inset from the field's edge — rather than moving it inwards. */
+  width: 20px;
+  height: 20px;
+  margin: 0 -2px;
+  border-radius: var(--maptiler-routing-radius-small);
   color: var(--maptiler-routing-muted-color);
 }
 
 .maptiler-routing .maptiler-routing-waypoint-clear:hover {
+  background: var(--maptiler-routing-surface-hover);
   color: var(--maptiler-routing-text-color);
 }
 
@@ -545,10 +586,9 @@
 /* SearchResultList: a white card with a 6px radius and a shadow, holding rows
    of icon, one or two lines of text, and a chevron. */
 .maptiler-routing-suggestions {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
+  /* against the viewport, like the filter menus: the panel body scrolls and
+     would clip a list positioned inside it. The view sets the coordinates. */
+  position: fixed;
   z-index: 2;
   max-height: 285px;
   overflow-y: auto;
@@ -557,7 +597,9 @@
   padding: 0;
   background: var(--maptiler-routing-surface);
   border-radius: 6px;
-  box-shadow: var(--maptiler-routing-shadow);
+  /* the list's own shadow, which is deeper than the panel's: it floats over
+     the map rather than sitting on it */
+  box-shadow: var(--maptiler-routing-list-shadow);
 }
 
 .maptiler-routing-suggestion {
@@ -590,7 +632,7 @@
 }
 
 .maptiler-routing-suggestion-primary {
-  font-weight: 500;
+  font-size: 14px;
 }
 
 .maptiler-routing-suggestion-secondary {
@@ -805,6 +847,7 @@
   border-radius: 6px;
   color: var(--maptiler-routing-accent);
   font-size: 14px;
+  text-align: center;
 }
 
 .maptiler-routing button.maptiler-routing-dropdown-reset:hover {
