@@ -10,6 +10,7 @@ import type {
   RoutingControlTheme,
   RoutingFilter,
   RoutingModeConfig,
+  RoutingModeDisplay,
   RoutingClickToAdd,
 } from "./routing-ui-types";
 
@@ -267,7 +268,8 @@ export type ResolvedControlOptions = {
   className?: string;
   unstyled: boolean;
   modes: RoutingModeConfig[];
-  showModeLabels: boolean;
+  modeDisplay: RoutingModeDisplay;
+  showSingleMode: boolean;
   profile?: RoutingProfile;
   filters: readonly RoutingFilter[];
   avoidances: readonly RoutingAvoidanceId[];
@@ -310,7 +312,8 @@ export function resolveControlOptions(options: MaptilerRoutingControlOptions = {
     className: options.className,
     unstyled: options.unstyled ?? false,
     modes: (options.modes ?? DEFAULT_MODES).map((mode) => (typeof mode === "string" ? { id: mode } : mode)),
-    showModeLabels: options.showModeLabels ?? true,
+    modeDisplay: options.modeDisplay ?? "both",
+    showSingleMode: options.showSingleMode ?? true,
     profile: options.profile,
     filters: options.filters ?? DEFAULT_FILTERS,
     avoidances: options.avoidances ?? DEFAULT_AVOIDANCES,

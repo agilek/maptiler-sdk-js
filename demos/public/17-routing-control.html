@@ -105,8 +105,13 @@
       <label class="check"><input type="checkbox" class="mode-toggle" value="truck" checked> Truck</label>
       <label class="check"><input type="checkbox" class="mode-toggle" value="bicycle" checked> Bike</label>
       <label class="check"><input type="checkbox" class="mode-toggle" value="pedestrian" checked> Walk</label>
-      <label class="check"><input type="checkbox" id="opt-mode-labels" checked> Show mode names</label>
-      <p class="hint">Untick every mode to hide the switcher completely. Untick "show mode names" for icon-only tabs.</p>
+      <p class="hint">Tab content:</p>
+      <button data-display="both">Icon + name</button>
+      <button data-display="icon">Icon only</button>
+      <button data-display="label">Name only</button>
+      <button data-display="none">Nothing</button>
+      <label class="check"><input type="checkbox" id="opt-single-mode" checked> Show the switcher when only one mode is left</label>
+      <p class="hint">Untick every mode, choose "Nothing", or leave a single mode with the box unticked — the switcher leaves no trace behind in every case.</p>
       <button data-modes="relabelled">Relabelled car only</button>
     </div>
 

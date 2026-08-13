@@ -241,6 +241,14 @@
   box-sizing: border-box;
 }
 
+.maptiler-routing [hidden] {
+  /* The `hidden` attribute is honoured by a UA-stylesheet rule, which any
+     author `display` here outranks — a hidden flex row would otherwise keep
+     painting its background, border and margin. This restates it as an author
+     rule so `hidden` means hidden throughout the panel. */
+  display: none;
+}
+
 /* Header */
 
 .maptiler-routing-header {

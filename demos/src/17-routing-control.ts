@@ -1,4 +1,4 @@
-import { Map, MapStyle, MaptilerRoutingControl, config, type MaptilerRoutingControlOptions, type RoutingProfile } from "../../src/index";
+import { Map, MapStyle, MaptilerRoutingControl, config, type MaptilerRoutingControlOptions, type RoutingModeDisplay, type RoutingProfile } from "../../src/index";
 import { setupMapTilerApiKey } from "./demo-utils";
 
 setupMapTilerApiKey({ config });
@@ -70,8 +70,14 @@ document.querySelectorAll<HTMLInputElement>(".mode-toggle").forEach((input) => {
   input.addEventListener("change", applyCheckedModes);
 });
 
-document.getElementById("opt-mode-labels")!.addEventListener("change", (event) => {
-  apply({ showModeLabels: (event.target as HTMLInputElement).checked });
+document.querySelectorAll<HTMLButtonElement>("[data-display]").forEach((button) => {
+  button.addEventListener("click", () => {
+    apply({ modeDisplay: button.dataset.display as RoutingModeDisplay });
+  });
+});
+
+document.getElementById("opt-single-mode")!.addEventListener("change", (event) => {
+  apply({ showSingleMode: (event.target as HTMLInputElement).checked });
 });
 
 document.querySelectorAll<HTMLButtonElement>("[data-modes]").forEach((button) => {

@@ -45,24 +45,40 @@ export class FiltersView {
     this.renderFilters();
   }
 
+  /**
+   * Whether the switcher is worth rendering at all.
+   *
+   * When it is not, the container is removed rather than emptied or hidden:
+   * an empty rail would still paint its background, border and margin.
+   */
+  private shouldRenderModes(): boolean {
+    const { modes, modeDisplay, showSingleMode } = this.context.options;
+
+    if (modes.length === 0) return false;
+    if (modeDisplay === "none") return false;
+    // one mode is a label, not a control — the consumer decides whether it earns the space
+    if (modes.length === 1 && !showSingleMode) return false;
+    return true;
+  }
+
   private renderModes(): void {
-    const { modes, labels, renderers, formatters, showModeLabels } = this.context.options;
+    const { modes, labels, renderers, formatters, modeDisplay } = this.context.options;
     const selected = this.context.routing.getProfile();
 
     const replacement = renderers.transportModes?.({ modes, selected, control: this.context.control, labels, formatters });
     if (replacement) {
+      this.attachModes();
       this.modesElement.replaceChildren(replacement);
       return;
     }
 
-    // an empty list pins the profile: the switcher disappears entirely
-    if (modes.length === 0) {
+    if (!this.shouldRenderModes()) {
       this.modesElement.replaceChildren();
-      this.modesElement.hidden = true;
+      this.modesElement.remove();
       return;
     }
 
-    this.modesElement.hidden = false;
+    this.attachModes();
     const fragment = document.createDocumentFragment();
 
     for (const mode of modes) {
@@ -75,16 +91,18 @@ export class FiltersView {
       // roving tabindex: the group is one stop, arrows move within it
       tab.tabIndex = isSelected ? 0 : -1;
 
-      if (typeof mode.icon === "function") tab.append(mode.icon());
-      else tab.append(icon(mode.icon ?? PROFILE_ICONS[mode.id]));
+      if (modeDisplay !== "label") {
+        if (typeof mode.icon === "function") tab.append(mode.icon());
+        else tab.append(icon(mode.icon ?? PROFILE_ICONS[mode.id]));
+      }
 
       const name = mode.label ?? labels.modes[mode.id] ?? mode.id;
-      if (showModeLabels) {
-        tab.append(el("span", undefined, name));
-      } else {
+      if (modeDisplay === "icon") {
         // icon-only, but the name still names the tab for assistive tech
         tab.setAttribute("aria-label", name);
         tab.title = name;
+      } else {
+        tab.append(el("span", undefined, name));
       }
 
       tab.addEventListener("click", () => {
@@ -99,6 +117,12 @@ export class FiltersView {
     }
 
     this.modesElement.replaceChildren(fragment);
+  }
+
+  /** Puts the switcher back at the top of the view after it was removed. */
+  private attachModes(): void {
+    if (this.modesElement.isConnected) return;
+    this.element.prepend(this.modesElement);
   }
 
   /** Arrow keys move the selection, which is the radio-group convention. */
@@ -143,8 +167,17 @@ export class FiltersView {
       else fragment.append(this.buildUnitsFilter());
     }
 
+    // removed rather than hidden: an empty flex row would still paint its
+    // border and margin (`display` in the stylesheet beats the `hidden`
+    // attribute, which is a UA-stylesheet rule)
+    if (fragment.childNodes.length === 0) {
+      this.filtersElement.replaceChildren();
+      this.filtersElement.remove();
+      return;
+    }
+
+    if (!this.filtersElement.isConnected) this.element.append(this.filtersElement);
     this.filtersElement.replaceChildren(fragment);
-    this.filtersElement.hidden = filters.length === 0;
   }
 
   private buildRouteModeFilter(): HTMLElement {

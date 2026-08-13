@@ -2028,7 +2028,13 @@ and the lifecycle (`calculate`, `cancel`, `clear`). Changes are coalesced behind
 burst of edits costs one request, and a superseded request is aborted rather than reported as an
 error.
 
-Passing an empty `modes` array hides the transport switcher entirely and pins the profile.
+`modeDisplay` controls what a transport tab shows — `both` (default), `icon` only (the name becomes
+the tab's accessible name), `label` only, or `none`. Passing an empty `modes` array also pins the
+profile, and `showSingleMode: false` drops the switcher once a single mode is left, on the grounds
+that a tab you cannot switch away from is a label rather than a control.
+
+In every one of those cases the switcher is **removed**, not emptied or hidden, so no container
+background, border or spacing is left behind.
 
 Events: `routingstart`, `routingroutes`, `routingselect`, `routingwaypoints`, `routingconfig`,
 `routingerror` and `routingclear`, all typed by name. `routingconfig` is what a custom UI listens to
@@ -2085,7 +2091,8 @@ units, alternates, waypoint limits, and each interaction:
 ```ts
 new MaptilerRoutingControl({
   modes: [{ id: "car", label: "Drive" }, { id: "bicycle" }],
-  showModeLabels: false,                // icon-only tabs; the name stays as the accessible name
+  modeDisplay: "icon",                  // "both" | "icon" | "label" | "none"
+  showSingleMode: false,                // drop the switcher when one mode is left
   filters: ["mode", "units"],           // "mode" | "departure" | "avoidances" | "units"
   avoidances: ["tolls", "ferry"],
   units: "mi",

@@ -24,6 +24,12 @@ export type RoutingFilter = (typeof RoutingFilter)[keyof typeof RoutingFilter];
 /** An avoidance switch inside the avoidances menu. */
 export type RoutingAvoidanceId = keyof RoutingAvoidances;
 
+/**
+ * What a transport tab shows: its icon, its name, both, or nothing at all —
+ * `none` removes the switcher rather than emptying it.
+ */
+export type RoutingModeDisplay = "icon" | "label" | "both" | "none";
+
 /** How the panel reacts to a click on the map. */
 export const RoutingClickToAdd = {
   /** Never. Map clicks are left entirely to the application. */
@@ -322,15 +328,29 @@ export type MaptilerRoutingControlOptions = {
   modes?: readonly (RoutingProfile | RoutingModeConfig)[];
 
   /**
-   * Whether the transport tabs show their names next to the icons.
+   * What a transport tab shows.
    *
-   * `false` renders icon-only tabs; the name is kept as the tab's accessible
-   * name and tooltip, so nothing is lost for screen readers. Useful for narrow
-   * panels, or when the icons alone carry the meaning.
+   * - `both` — icon and name.
+   * - `icon` — icon only. The name becomes the tab's accessible name and
+   *   tooltip, so nothing is lost for screen readers.
+   * - `label` — name only.
+   * - `none` — no switcher at all. Nothing is rendered: no tabs, and no
+   *   container, so no background, border or spacing is left behind.
+   *
+   * Default: `"both"`
+   */
+  modeDisplay?: RoutingModeDisplay;
+
+  /**
+   * Whether the switcher renders when only one transport mode is available.
+   *
+   * With a single mode there is nothing to switch between, so the tab is a
+   * label rather than a control. Set this to `false` to drop it entirely —
+   * the container goes with it, leaving no background or spacing behind.
    *
    * Default: `true`
    */
-  showModeLabels?: boolean;
+  showSingleMode?: boolean;
 
   /**
    * Transport mode selected on first render.

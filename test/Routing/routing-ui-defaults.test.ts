@@ -43,11 +43,16 @@ describe("resolveControlOptions", () => {
     expect(options.collapsible).toBe(true);
     expect(options.turnByTurn.enabled).toBe(true);
     expect(options.search.enabled).toBe(true);
-    expect(options.showModeLabels).toBe(true);
+    expect(options.modeDisplay).toBe("both");
+    expect(options.showSingleMode).toBe(true);
   });
 
-  it("can turn the transport tabs into icon-only buttons", () => {
-    expect(resolveControlOptions({ showModeLabels: false }).showModeLabels).toBe(false);
+  it.each(["icon", "label", "both", "none"] as const)("accepts %s as the transport tab content", (modeDisplay) => {
+    expect(resolveControlOptions({ modeDisplay }).modeDisplay).toBe(modeDisplay);
+  });
+
+  it("can drop the switcher when a single mode is left", () => {
+    expect(resolveControlOptions({ showSingleMode: false }).showSingleMode).toBe(false);
   });
 
   it("normalizes a profile name into a mode configuration", () => {
