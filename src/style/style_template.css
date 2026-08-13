@@ -213,6 +213,7 @@
   /* Pin, Active=False — a tint of the accent rather than the muted grey */
   --maptiler-routing-pin-color: #98b7ff;
   --maptiler-routing-danger-color: #d92d20;
+  --maptiler-routing-danger-surface: #fef3f2;
   /* RouteLoading: the two ends of the skeleton's shimmer */
   --maptiler-routing-skeleton-color: #e4ecff;
   --maptiler-routing-skeleton-highlight: #f1f5ff;
@@ -807,9 +808,18 @@
   white-space: nowrap;
 }
 
+/* The error sits above the results, in a card of its own so it reads as a
+   state of the panel rather than as a line of red text under the filters. */
 .maptiler-routing-error {
-  margin: 4px 0;
+  display: flex;
+  margin: 0 0 var(--maptiler-routing-gap);
+  padding: 12px;
+  border: 1px solid var(--maptiler-routing-danger-color);
+  border-radius: var(--maptiler-routing-radius);
+  background: var(--maptiler-routing-danger-surface);
   color: var(--maptiler-routing-danger-color);
+  font-size: 14px;
+  line-height: 20px;
 }
 
 /* Loading skeleton */
@@ -856,22 +866,6 @@
 }
 
 /* Route cards */
-
-.maptiler-routing-routes-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 4px;
-}
-
-.maptiler-routing-routes-header h3 {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--maptiler-routing-muted-color);
-}
 
 .maptiler-routing-routes {
   list-style: none;

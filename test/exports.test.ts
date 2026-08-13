@@ -89,6 +89,7 @@ const expectedExports = Array.from(
     "expandMapStyle",
     "geocoding",
     "routing",
+    "RoutingErrorReason",
     "RoutingController",
     "RoutingProfile",
     "ManeuverType",

@@ -138,7 +138,8 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
 
     // the session may already hold results — it outlives any single control,
     // so the panel starts from what is there rather than from an empty state
-    resultsView.setStatus(this.initialStatus());
+    const initial = this.initialState();
+    resultsView.setStatus(initial.status, initial.error);
     this.alignProfileWithModes();
 
     // the design's stacking order (RoutingPanel/Results in Map Controls UI):
@@ -286,12 +287,19 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
   }
 
   /** Panel status implied by the session the control just attached to. */
-  private initialStatus(): RoutingPanelStatus {
+  private initialState(): { status: RoutingPanelStatus; error: Error | null } {
     const routing = this.routing;
-    if (!routing) return "idle";
-    if (routing.isCalculating()) return "loading";
-    if (routing.getRoutes().length > 0) return "ready";
-    return routing.getWaypoints().filter((waypoint) => waypoint.lngLat).length >= 2 ? "loading" : "idle";
+    if (!routing) return { status: "idle", error: null };
+    if (routing.isCalculating()) return { status: "loading", error: null };
+
+    // a computation that failed before this panel existed — or before it was
+    // re-added, which a style reload does — is still the session's state, and
+    // without this the panel would sit on "calculating" for ever
+    const error = routing.getLastError();
+    if (error) return { status: "error", error };
+
+    if (routing.getRoutes().length > 0) return { status: "ready", error: null };
+    return { status: routing.getWaypoints().filter((waypoint) => waypoint.lngLat).length >= 2 ? "loading" : "idle", error: null };
   }
 
   /** Options forwarded to the routing session when this control creates it. */

@@ -2,6 +2,7 @@ import { config, MAPTILER_SESSION_ID } from "../config";
 import { defaults } from "../constants/defaults";
 import { FetchError } from "../utils/errors";
 import { decodePolyline } from "./polyline";
+import { classifyRoutingError } from "./routing-errors";
 import { describeRouteUsage, formatRouteArrival, formatRouteDistance, formatRouteDuration } from "./routing-format";
 import { getCoordinatesBounds, getLegCoordinates, getLineMidpoint, getRouteCoordinates, getRoutesBounds } from "./routing-geometry";
 import { parseRoutingErrorBody } from "./routing-request";
@@ -85,6 +86,12 @@ export const routing = {
    * `status` and the service's own message in `detail`.
    */
   directions: (request: DirectionsRequestOptions, options: DirectionsFetchOptions = {}): Promise<DirectionsResponse> => fetchDirections(request, options),
+
+  /**
+   * Reduces a failed request to a {@link RoutingErrorReason}, so a UI can say
+   * what went wrong in its own words rather than repeating the service's.
+   */
+  classifyError: classifyRoutingError,
 
   decodePolyline,
   getLegCoordinates,

@@ -68,6 +68,7 @@ export class RoutingController extends maplibregl.Evented {
   private response?: DirectionsResponse;
 
   private calculating = false;
+  private lastError: Error | null = null;
   private abortController: AbortController | null = null;
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private destroyed = false;
@@ -387,6 +388,18 @@ export class RoutingController extends maplibregl.Evented {
   }
 
   /**
+   * The error the last computation failed with, or `null` when the last one
+   * succeeded, was aborted, or has not run yet.
+   *
+   * Cleared when a new computation starts and when the session is cleared, so
+   * it describes the state the session is in now rather than everything that
+   * has ever gone wrong.
+   */
+  getLastError(): Error | null {
+    return this.lastError;
+  }
+
+  /**
    * Computes the route now, bypassing the debounce.
    *
    * @returns The routes, or an empty array when fewer than two waypoints have
@@ -417,6 +430,7 @@ export class RoutingController extends maplibregl.Evented {
     const controller = new AbortController();
     this.abortController = controller;
     this.calculating = true;
+    this.lastError = null;
     this.fireEvent("routingstart", { request });
 
     try {
@@ -445,7 +459,12 @@ export class RoutingController extends maplibregl.Evented {
       if (controller.signal.aborted || (error instanceof DOMException && error.name === "AbortError")) return [];
       if (this.isDestroyed()) return [];
 
-      this.fireEvent("routingerror", { error: error instanceof Error ? error : new Error(String(error)) });
+      const failure = error instanceof Error ? error : new Error(String(error));
+      // remembered as well as fired: a listener attached after the fact — a
+      // panel added, or re-added, once the request had already failed — has no
+      // other way to know the session is in a failed state
+      this.lastError = failure;
+      this.fireEvent("routingerror", { error: failure });
       return [];
     } finally {
       if (this.abortController === controller) {
@@ -465,6 +484,7 @@ export class RoutingController extends maplibregl.Evented {
   /** Removes the drawn routes and the stored results, keeping the waypoints. */
   clear(): this {
     if (this.destroyed) return this;
+    this.lastError = null;
     if (this.routes.length === 0 && this.selectedIndex === -1) return this;
 
     this.routes = [];

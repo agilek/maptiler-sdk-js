@@ -1,6 +1,7 @@
 import type { ControlPosition } from "maplibre-gl";
 import type { GeocodingFeature } from "@maptiler/client";
 import type { BicycleRouteType, CarRouteMode, Route, RouteSummary, RoutingAvoidances, RoutingProfile, RoutingUnits, RoutingWaypoint, RoutingWaypointInput } from "../types";
+import type { RoutingErrorReason } from "../routing-errors";
 import type { FlatRouteStep } from "../routing-steps";
 import type { MaptilerRoutingControl } from "./MaptilerRoutingControl";
 
@@ -127,8 +128,17 @@ export type RoutingControlLabels = {
   needsWaypoints?: string;
   /** Status shown when the service returned no route. */
   noRoutes?: string;
-  /** Fallback error text when a failure carries no message. */
+  /** Fallback error text, used when a failure cannot be classified. */
   error?: string;
+  /**
+   * What to say for each kind of failure.
+   *
+   * The service's own message is English, aimed at a developer, and reads
+   * badly in a panel — "Maximum path distance exceeded" for a walking route
+   * across a country. These replace it; the original stays on the element's
+   * `title` and in the `routingerror` event.
+   */
+  errors?: Partial<Record<RoutingErrorReason, string>>;
   /** The back control of the turn-by-turn view. */
   backToRoutes?: string;
   /** Accessible name of the turn-by-turn button on a route card. */
@@ -272,8 +282,10 @@ export type RoutingControlTheme = {
   fieldHover?: string;
   /** Color of a waypoint pin while its field is neither hovered nor focused. */
   pinColor?: string;
-  /** Color of error text. */
+  /** Color of error text and of the border around it. */
   dangerColor?: string;
+  /** Background of the error card. */
+  dangerSurface?: string;
   /** Base color of the loading skeleton. */
   skeletonColor?: string;
   /** Color the skeleton's shimmer sweeps through. */

@@ -1,3 +1,4 @@
+import { classifyRoutingError } from "../routing-errors";
 import type { Route } from "../types";
 import type { RoutingPanelContext } from "./routing-ui-context";
 import { RC, maneuverIconId } from "./routing-ui-defaults";
@@ -19,7 +20,6 @@ export class ResultsView {
   private readonly statusElement: HTMLParagraphElement;
   private readonly errorElement: HTMLParagraphElement;
   private readonly skeleton: HTMLElement;
-  private readonly routesHeader: HTMLElement;
   private readonly routesList: HTMLUListElement;
   private readonly detailElement: HTMLElement;
   private readonly detailSummary: HTMLParagraphElement;
@@ -52,12 +52,11 @@ export class ResultsView {
       this.skeleton.append(el("div", RC.skeletonCard));
     }
 
-    this.routesHeader = el("div", RC.routesHeader);
-    this.routesHeader.append(el("h3", undefined, labels.routes));
-    this.routesHeader.hidden = true;
-
     this.routesList = el("ul", RC.routes);
     this.routesList.setAttribute("role", "list");
+    // the design gives the list no heading, so its name lives on the list
+    // itself rather than in a line above it
+    this.routesList.setAttribute("aria-label", labels.routes);
 
     this.detailSummary = el("p", RC.detailSummary);
     this.stepsList = el("ol", RC.steps);
@@ -75,7 +74,7 @@ export class ResultsView {
     this.detailElement.append(detailTop, this.detailSummary, this.stepsList);
 
     this.element = el("div");
-    this.element.append(this.statusElement, this.errorElement, this.skeleton, this.routesHeader, this.routesList, this.detailElement);
+    this.element.append(this.statusElement, this.errorElement, this.skeleton, this.routesList, this.detailElement);
   }
 
   //#region State
@@ -114,10 +113,27 @@ export class ResultsView {
     }
 
     this.errorElement.hidden = this.status !== "error";
-    if (this.status === "error") this.errorElement.textContent = this.error?.message ?? labels.error;
+    if (this.status === "error") {
+      // the service's own sentence is a developer's message: it names an
+      // internal limit rather than the thing the visitor can do about it. It
+      // stays on the title, and in the `routingerror` event, for debugging.
+      const reason = classifyRoutingError(this.error);
+      this.errorElement.textContent = labels.errors[reason] ?? labels.error;
+      this.errorElement.title = this.error?.message ?? "";
+    }
 
     const text =
-      this.status === "loading" && routes.length === 0 ? labels.loading : this.status === "empty" ? labels.noRoutes : this.status === "idle" ? labels.needsWaypoints : "";
+      this.status === "loading"
+        ? // with cards already on screen the skeleton stays away and this line
+          // is the only sign that they are being replaced
+          routes.length === 0
+          ? labels.loading
+          : labels.recalculating
+        : this.status === "empty"
+          ? labels.noRoutes
+          : this.status === "idle"
+            ? labels.needsWaypoints
+            : "";
 
     // the skeleton stands in for the first result, so the "Calculating route…"
     // line is clipped rather than removed: it is the live region that tells a
@@ -132,11 +148,6 @@ export class ResultsView {
     // stale results stay on screen while a new request runs, so the list is
     // marked busy rather than emptied
     setBooleanAttribute(this.routesList, "aria-busy", this.status === "loading" && routes.length > 0);
-    // while the turn-by-turn view is open the list belongs to it, so a render
-    // triggered by anything else must not bring the list chrome back
-    this.routesHeader.hidden = routes.length === 0 || this.isDetailOpen();
-    const heading = this.routesHeader.querySelector("h3");
-    if (heading) heading.textContent = this.status === "loading" && routes.length > 0 ? labels.recalculating : labels.routes;
   }
 
   private renderRoutes(): void {
@@ -271,10 +282,10 @@ export class ResultsView {
   showDetail(opener?: HTMLElement): void {
     this.detailOpener = opener ?? null;
     this.detailElement.hidden = false;
-    this.routesHeader.hidden = true;
     this.routesList.hidden = true;
     this.statusElement.hidden = true;
     this.skeleton.hidden = true;
+    this.errorElement.hidden = true;
     this.renderSteps();
     this.detailElement.querySelector<HTMLButtonElement>(`.${RC.detailBack}`)?.focus();
     this.context.control.fire("routinguiviewchange", { view: "detail" });

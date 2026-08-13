@@ -202,7 +202,7 @@ export {
   geocoding,
 } from "./geocoding";
 
-export { routing, RoutingController, RoutingProfile, ManeuverType, MaptilerRoutingControl, RoutingClickToAdd, RoutingFilter } from "./Routing";
+export { routing, RoutingController, RoutingProfile, ManeuverType, RoutingErrorReason, MaptilerRoutingControl, RoutingClickToAdd, RoutingFilter } from "./Routing";
 export type * from "./Routing/types";
 export type * from "./Routing/ui/routing-ui-types";
 export type { FlatRouteStep } from "./Routing/routing-steps";

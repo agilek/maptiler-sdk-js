@@ -2071,6 +2071,23 @@ The same namespace carries the helpers for working with a response: `decodePolyl
 `flattenRouteSteps`, `formatRouteDuration`, `formatRouteDistance`, `formatRouteArrival` and
 `describeRouteUsage`.
 
+A rejection is a `FetchError` carrying the status and the service's own message. That message is
+written for a developer — "Maximum path distance exceeded" is what a walking route across a country
+comes back with — so `routing.classifyError` reduces it to a `RoutingErrorReason` you can act on:
+`tooFar`, `noRoute`, `unreachable`, `unauthorized`, `rateLimited`, `unavailable` or `unknown`. Each
+transport profile has its own distance ceiling, which is what `tooFar` reports.
+
+```ts
+try {
+  await routing.directions(request);
+} catch (error) {
+  if (routing.classifyError(error) === "tooFar") suggestAnotherMode();
+}
+```
+
+The panel does this for you: it shows the matching `labels.errors` string and keeps the original on
+the element's `title`, so nothing is lost for debugging.
+
 #### Transport profiles
 
 `car`, `truck`, `bicycle` and `pedestrian`. The profile decides which `profileOptions` are accepted,
@@ -2165,6 +2182,9 @@ new MaptilerRoutingControl({
     from: "Point de départ",
     to: "Destination",
     modes: { car: "Voiture", bicycle: "Vélo" },
+    // the panel classifies a failure and shows one of these, never the
+    // service's own English sentence — that stays on the element's `title`
+    errors: { tooFar: "Trajet trop long pour ce mode de transport." },
   },
   formatters: {
     duration: (seconds) => `${Math.round(seconds / 60)} min`,

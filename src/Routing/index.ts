@@ -3,6 +3,7 @@ export { RoutingController } from "./RoutingController";
 export { MaptilerRoutingControl, RoutingClickToAdd, RoutingFilter } from "./ui";
 export type * from "./ui/routing-ui-types";
 export { ManeuverType, RoutingProfile } from "./types";
+export { RoutingErrorReason } from "./routing-errors";
 export type * from "./types";
 export type { FlatRouteStep } from "./routing-steps";
 export type { RouteBounds } from "./routing-geometry";
