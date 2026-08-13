@@ -896,6 +896,7 @@
    both states, transparent when unselected, so selecting one does not shift
    the text by a pixel. */
 .maptiler-routing-route-card {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -928,6 +929,21 @@
   align-items: flex-start;
   gap: 8px;
   text-align: left;
+}
+
+/* The whole card selects the route, not just the text inside it: the button
+   stretches an invisible layer over the card, which is what catches a click
+   on the padding. The turn-by-turn button sits above that layer, so it still
+   gets its own clicks. */
+.maptiler-routing-route-body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.maptiler-routing-route-detail {
+  position: relative;
 }
 
 .maptiler-routing-route-duration {
@@ -964,6 +980,12 @@
    the card's own background, so it reads as part of the card rather than as a
    floating control. */
 .maptiler-routing button.maptiler-routing-route-detail {
+  /* DirectionButton: a 24px icon centred in a 32px square — the glyph's own
+     offset inside that 24px box is what puts it slightly right of centre, as
+     the design has it */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: none;
   width: 32px;
   height: 32px;
