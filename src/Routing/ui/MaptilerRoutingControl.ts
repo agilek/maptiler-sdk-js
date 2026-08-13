@@ -586,6 +586,8 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
       return;
     }
 
+    this.claimTopSlot(container);
+
     const rightCorner = container.classList.contains("maplibregl-ctrl-top-right") || container.classList.contains("maplibregl-ctrl-bottom-right");
 
     if (!this.opened || !rightCorner) {
@@ -599,6 +601,28 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
     const offset = panel.getBoundingClientRect().width + this.gapPx();
     container.style.marginRight = `${offset.toString()}px`;
     panel.style.right = `${(-offset).toString()}px`;
+  }
+
+  /**
+   * Takes the first place in a top corner's column.
+   *
+   * The panel hangs off the launcher, so wherever the launcher sits, the panel
+   * starts — and `addControl` appends, which puts the launcher under whatever
+   * was added before it and the panel a stack's height down the map, running
+   * off the bottom. The design has it the other way round: the close button at
+   * the top of the column with the zoom and the rest beneath it, so the panel
+   * starts where the column does. That has to hold however the consumer
+   * ordered their `addControl` calls, and after every re-add.
+   *
+   * Only for the top corners. In a bottom one the column grows upwards from
+   * the map's floor, so its first child is not the one the panel should align
+   * with, and the host's order is left alone.
+   */
+  private claimTopSlot(container: HTMLElement): void {
+    if (!this.root || container.firstElementChild === this.root) return;
+    if (!container.classList.contains("maplibregl-ctrl-top-right") && !container.classList.contains("maplibregl-ctrl-top-left")) return;
+
+    container.prepend(this.root);
   }
 
   /** The gap between the launcher and the panel, in pixels. */
