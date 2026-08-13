@@ -113,6 +113,7 @@ export const CSS_VARS: Readonly<Record<keyof RoutingControlTheme, string>> = Obj
   borderColor: "--maptiler-routing-border-color",
   fieldHover: "--maptiler-routing-field-hover",
   pinColor: "--maptiler-routing-pin-color",
+  modeIconColor: "--maptiler-routing-mode-icon-color",
   dangerColor: "--maptiler-routing-danger-color",
   dangerSurface: "--maptiler-routing-danger-surface",
   skeletonColor: "--maptiler-routing-skeleton-color",

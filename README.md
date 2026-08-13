@@ -2160,6 +2160,7 @@ A dark panel, copy-pasteable:
   --maptiler-routing-accent-contrast: #0b0e14;
   --maptiler-routing-field-hover: #1b2230;
   --maptiler-routing-pin-color: #41527a;
+  --maptiler-routing-mode-icon-color: #95a0b5;
   --maptiler-routing-skeleton-color: #1b2230;
   --maptiler-routing-skeleton-highlight: #232c3d;
 }

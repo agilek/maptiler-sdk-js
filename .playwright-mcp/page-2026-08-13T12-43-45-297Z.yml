@@ -1,0 +1,124 @@
+- generic [active]:
+  - generic [ref=f232e1]:
+    - generic:
+      - region "Map" [ref=f232e2]
+      - button "Map marker" [ref=f232e3]
+      - button "Map marker" [ref=f232e22]
+    - generic:
+      - generic [ref=f232e117]:
+        - button "Close the directions panel" [expanded] [ref=f232e118] [cursor=pointer]
+        - region "Directions" [ref=f232e120]:
+          - generic [ref=f232e122]:
+            - radiogroup "Transport mode" [ref=f232e123]:
+              - radio "Car" [checked] [ref=f232e124] [cursor=pointer]
+              - radio "Truck" [ref=f232e127] [cursor=pointer]
+              - radio "Bike" [ref=f232e130] [cursor=pointer]
+              - radio "Walk" [ref=f232e133] [cursor=pointer]
+            - generic [ref=f232e136]:
+              - list [ref=f232e137]:
+                - listitem [ref=f232e138]:
+                  - button "Reorder this stop" [ref=f232e139] [cursor=pointer]
+                  - generic [ref=f232e141]:
+                    - combobox "From" [ref=f232e143]: 47.37690, 8.54170
+                    - button "Clear this field" [ref=f232e144] [cursor=pointer]
+                  - button "Remove this stop" [ref=f232e146] [cursor=pointer]
+                - listitem [ref=f232e148]:
+                  - button "Reorder this stop" [ref=f232e149] [cursor=pointer]
+                  - generic [ref=f232e151]:
+                    - combobox "To" [ref=f232e153]: 50.23290, 12.87240
+                    - button "Clear this field" [ref=f232e154] [cursor=pointer]
+                  - button "Remove this stop" [ref=f232e156] [cursor=pointer]
+              - button "Add a stop" [ref=f232e159] [cursor=pointer]
+            - generic [ref=f232e161]:
+              - button "Routes" [ref=f232e163] [cursor=pointer]:
+                - generic [ref=f232e164]: Fastest
+              - button "Departure" [ref=f232e167] [cursor=pointer]:
+                - generic [ref=f232e168]: Now
+              - button "Avoid" [ref=f232e171] [cursor=pointer]
+            - generic [ref=f232e174]:
+              - 'alert "[routing.directions]: Failed to fetch directions at https://api.maptiler.com/routing/v1/directions?key=probe&mtsid=6559d065-6569-4d7a-8062-965a1b320731: 403: . Invalid key - Get your FREE key at https://cloud.maptiler.com/account/keys/" [ref=f232e175]': This API key cannot compute routes.
+              - list "Routes"
+      - generic:
+        - group
+  - generic [ref=f232e44]:
+    - heading "Routing control" [level=1] [ref=f232e45]
+    - paragraph [ref=f232e46]: Every button below reconfigures the routing control on the right by rebuilding the control with new options.
+    - generic [ref=f232e47]:
+      - generic [ref=f232e48]: Transport modes
+      - generic [ref=f232e49]:
+        - checkbox "Car" [checked] [ref=f232e50]
+        - text: Car
+      - generic [ref=f232e51]:
+        - checkbox "Truck" [checked] [ref=f232e52]
+        - text: Truck
+      - generic [ref=f232e53]:
+        - checkbox "Bike" [checked] [ref=f232e54]
+        - text: Bike
+      - generic [ref=f232e55]:
+        - checkbox "Walk" [checked] [ref=f232e56]
+        - text: Walk
+      - paragraph [ref=f232e57]: "Tab content:"
+      - button "Icon + name" [ref=f232e58] [cursor=pointer]
+      - button "Icon only" [ref=f232e59] [cursor=pointer]
+      - button "Name only" [ref=f232e60] [cursor=pointer]
+      - button "Nothing" [ref=f232e61] [cursor=pointer]
+      - generic [ref=f232e62]:
+        - checkbox "Show the switcher when only one mode is left" [checked] [ref=f232e63]
+        - text: Show the switcher when only one mode is left
+      - paragraph [ref=f232e64]: Untick every mode, choose "Nothing", or leave a single mode with the box unticked — the switcher leaves no trace behind in every case.
+      - button "Relabelled car only" [ref=f232e65] [cursor=pointer]
+    - generic [ref=f232e66]:
+      - generic [ref=f232e67]: Filters
+      - button "All" [ref=f232e68] [cursor=pointer]
+      - button "Departure only" [ref=f232e69] [cursor=pointer]
+      - button "None" [ref=f232e70] [cursor=pointer]
+      - paragraph [ref=f232e71]: "Each transport mode shows the filters that apply to it: route preference for the car, vehicle for the truck, bike type and speed for the bike."
+    - generic [ref=f232e72]:
+      - generic [ref=f232e73]: Units (developer's choice)
+      - button "Auto" [ref=f232e74] [cursor=pointer]
+      - button "km" [ref=f232e75] [cursor=pointer]
+      - button "mi" [ref=f232e76] [cursor=pointer]
+      - button "Let the user pick" [ref=f232e77] [cursor=pointer]
+    - generic [ref=f232e78]:
+      - generic [ref=f232e79]: Interactions
+      - generic [ref=f232e80]:
+        - checkbox "Place search" [checked] [ref=f232e81]
+        - text: Place search
+      - generic [ref=f232e82]:
+        - checkbox "Drag waypoints on map" [checked] [ref=f232e83]
+        - text: Drag waypoints on map
+      - generic [ref=f232e84]:
+        - checkbox "Turn-by-turn" [checked] [ref=f232e85]
+        - text: Turn-by-turn
+      - generic [ref=f232e86]:
+        - 'checkbox "Launcher button (unticked: always open)" [checked] [ref=f232e87]'
+        - text: "Launcher button (unticked: always open)"
+    - generic [ref=f232e88]:
+      - generic [ref=f232e89]: Theme
+      - textbox [ref=f232e90]: "#3174ff"
+      - button "Dark preset" [ref=f232e91] [cursor=pointer]
+      - button "Reset" [ref=f232e92] [cursor=pointer]
+    - generic [ref=f232e93]:
+      - generic [ref=f232e94]: Localization
+      - button "EN" [ref=f232e95] [cursor=pointer]
+      - button "FR" [ref=f232e96] [cursor=pointer]
+      - button "DE" [ref=f232e97] [cursor=pointer]
+      - button "Compact durations" [ref=f232e98] [cursor=pointer]
+    - generic [ref=f232e99]:
+      - generic [ref=f232e100]: Escape hatches
+      - button "Custom route card" [ref=f232e101] [cursor=pointer]
+      - button "Default cards" [ref=f232e102] [cursor=pointer]
+      - button "Unstyled" [ref=f232e103] [cursor=pointer]
+    - generic [ref=f232e104]:
+      - generic [ref=f232e105]: Programmatic
+      - button "Set waypoints" [ref=f232e106] [cursor=pointer]
+      - button "Select route 2" [ref=f232e107] [cursor=pointer]
+      - button "Open turn-by-turn" [ref=f232e108] [cursor=pointer]
+      - button "Open / close panel" [ref=f232e109] [cursor=pointer]
+    - generic [ref=f232e110]:
+      - generic [ref=f232e111]: Style
+      - button "Streets" [ref=f232e112] [cursor=pointer]
+      - button "Dark" [ref=f232e113] [cursor=pointer]
+    - generic [ref=f232e114]:
+      - generic [ref=f232e115]: Events
+      - generic [ref=f232e116]: "options: units routinguiopen"

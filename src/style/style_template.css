@@ -212,6 +212,8 @@
   --maptiler-routing-field-hover: #f2f6ff;
   /* Pin, Active=False — a tint of the accent rather than the muted grey */
   --maptiler-routing-pin-color: #98b7ff;
+  /* TransportModes: the icons keep one grey in every tab state */
+  --maptiler-routing-mode-icon-color: #444952;
   --maptiler-routing-danger-color: #d92d20;
   --maptiler-routing-danger-surface: #fef3f2;
   /* RouteLoading: the two ends of the skeleton's shimmer */
@@ -406,6 +408,9 @@
   border-radius: 8px;
 }
 
+/* TabItemFill: the text is the panel's own colour in every state — what marks
+   the selected tab is a white card under it and a heavier weight, not a
+   colour change. The icon keeps its own grey throughout. */
 .maptiler-routing-mode {
   display: flex;
   flex: 1;
@@ -415,28 +420,28 @@
   height: 36px;
   padding: 0 12px;
   border-radius: var(--maptiler-routing-radius-small);
-  color: var(--maptiler-routing-muted-color);
+  color: var(--maptiler-routing-text-color);
   font-size: 14px;
   line-height: 21px;
   transition: background var(--maptiler-routing-transition-duration) ease;
 }
 
-.maptiler-routing-mode[aria-checked="true"] {
-  font-weight: 600;
-}
-
 .maptiler-routing-mode .maptiler-routing-icon {
   width: 20px;
   height: 20px;
+  color: var(--maptiler-routing-mode-icon-color);
 }
 
 .maptiler-routing button.maptiler-routing-mode:hover {
   background: var(--maptiler-routing-surface-hover);
 }
 
-.maptiler-routing-mode[aria-checked="true"] {
-  background: var(--maptiler-routing-accent);
-  color: var(--maptiler-routing-accent-contrast);
+.maptiler-routing-mode[aria-checked="true"],
+.maptiler-routing button.maptiler-routing-mode[aria-checked="true"]:hover {
+  /* the rail is the tinted surface; the selected tab is the card lifted out
+     of it, which is why hovering it changes nothing */
+  background: var(--maptiler-routing-surface);
+  font-weight: 600;
 }
 
 /* Waypoints */

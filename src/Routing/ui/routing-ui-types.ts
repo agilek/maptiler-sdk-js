@@ -282,6 +282,8 @@ export type RoutingControlTheme = {
   fieldHover?: string;
   /** Color of a waypoint pin while its field is neither hovered nor focused. */
   pinColor?: string;
+  /** Color of the transport-mode icons, which is the same in every tab state. */
+  modeIconColor?: string;
   /** Color of error text and of the border around it. */
   dangerColor?: string;
   /** Background of the error card. */

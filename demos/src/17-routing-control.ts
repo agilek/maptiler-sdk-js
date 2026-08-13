@@ -148,6 +148,7 @@ document.querySelectorAll<HTMLButtonElement>("[data-theme]").forEach((button) =>
         accentContrast: "#0b0e14",
         fieldHover: "#1b2230",
         pinColor: "#41527a",
+        modeIconColor: "#95a0b5",
         skeletonColor: "#1b2230",
         skeletonHighlight: "#232c3d",
       },
