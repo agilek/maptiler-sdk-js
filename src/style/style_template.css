@@ -755,9 +755,15 @@
   }
 }
 
-.maptiler-routing-icon[data-icon="add-circle"] {
-  -webkit-mask-image: url([src/style/svg/routing-add-circle.svg]);
-  mask-image: url([src/style/svg/routing-add-circle.svg]);
+/* One chevron asset serves both directions: it points up while the panel is
+   open (the action is "collapse") and down once collapsed. */
+.maptiler-routing-toggle .maptiler-routing-icon {
+  transform: rotate(180deg);
+  transition: transform var(--maptiler-routing-transition-duration) ease;
+}
+
+.maptiler-routing[data-collapsed] .maptiler-routing-toggle .maptiler-routing-icon {
+  transform: rotate(0deg);
 }
 
 .maptiler-routing-icon[data-icon="chevron-down"] {
@@ -775,14 +781,9 @@
   mask-image: url([src/style/svg/routing-chevron-right.svg]);
 }
 
-.maptiler-routing-icon[data-icon="chevron-up"] {
-  -webkit-mask-image: url([src/style/svg/routing-chevron-up.svg]);
-  mask-image: url([src/style/svg/routing-chevron-up.svg]);
-}
-
-.maptiler-routing-icon[data-icon="crosshair"] {
-  -webkit-mask-image: url([src/style/svg/routing-crosshair.svg]);
-  mask-image: url([src/style/svg/routing-crosshair.svg]);
+.maptiler-routing-icon[data-icon="download"] {
+  -webkit-mask-image: url([src/style/svg/routing-download.svg]);
+  mask-image: url([src/style/svg/routing-download.svg]);
 }
 
 .maptiler-routing-icon[data-icon="drag"] {
@@ -793,11 +794,6 @@
 .maptiler-routing-icon[data-icon="maneuver-continue"] {
   -webkit-mask-image: url([src/style/svg/routing-maneuver-continue.svg]);
   mask-image: url([src/style/svg/routing-maneuver-continue.svg]);
-}
-
-.maptiler-routing-icon[data-icon="maneuver-destination"] {
-  -webkit-mask-image: url([src/style/svg/routing-maneuver-destination.svg]);
-  mask-image: url([src/style/svg/routing-maneuver-destination.svg]);
 }
 
 .maptiler-routing-icon[data-icon="maneuver-left"] {
@@ -835,11 +831,6 @@
   mask-image: url([src/style/svg/routing-maneuver-slight-right.svg]);
 }
 
-.maptiler-routing-icon[data-icon="maneuver-start"] {
-  -webkit-mask-image: url([src/style/svg/routing-maneuver-start.svg]);
-  mask-image: url([src/style/svg/routing-maneuver-start.svg]);
-}
-
 .maptiler-routing-icon[data-icon="maneuver-uturn-left"] {
   -webkit-mask-image: url([src/style/svg/routing-maneuver-uturn-left.svg]);
   mask-image: url([src/style/svg/routing-maneuver-uturn-left.svg]);
@@ -868,6 +859,16 @@
 .maptiler-routing-icon[data-icon="mode-truck"] {
   -webkit-mask-image: url([src/style/svg/routing-mode-truck.svg]);
   mask-image: url([src/style/svg/routing-mode-truck.svg]);
+}
+
+.maptiler-routing-icon[data-icon="my-location"] {
+  -webkit-mask-image: url([src/style/svg/routing-my-location.svg]);
+  mask-image: url([src/style/svg/routing-my-location.svg]);
+}
+
+.maptiler-routing-icon[data-icon="plus"] {
+  -webkit-mask-image: url([src/style/svg/routing-plus.svg]);
+  mask-image: url([src/style/svg/routing-plus.svg]);
 }
 
 .maptiler-routing-icon[data-icon="route-pin"] {

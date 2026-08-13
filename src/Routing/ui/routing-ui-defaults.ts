@@ -151,8 +151,8 @@ const MANEUVER_ICONS = {
   rightUTurn: "maneuver-uturn-right",
   roundaboutEnter: "maneuver-roundabout",
   roundaboutExit: "maneuver-roundabout",
-  start: "maneuver-start",
-  destination: "maneuver-destination",
+  start: "route-start",
+  destination: "route-pin",
 } as const;
 
 /** Icon id used for a maneuver kind the SDK does not know. */

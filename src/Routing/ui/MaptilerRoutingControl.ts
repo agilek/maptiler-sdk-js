@@ -205,7 +205,7 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
       const header = el("div", RC.header);
       header.append(el("h2", RC.title, labels.title));
 
-      const toggle = button(RC.toggle, labels.toggle, "chevron-up");
+      const toggle = button(RC.toggle, labels.toggle, "chevron-down");
       toggle.setAttribute("aria-controls", body.id);
       toggle.addEventListener("click", () => {
         this.toggle();

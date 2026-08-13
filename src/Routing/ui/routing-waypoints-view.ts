@@ -48,7 +48,7 @@ export class WaypointsView {
 
     const actions = el("div", RC.actions);
     this.addStopButton = button(RC.addStop, labels.addStop);
-    this.addStopButton.prepend(icon("add-circle"));
+    this.addStopButton.prepend(icon("plus"));
     this.addStopButton.addEventListener("click", () => {
       this.addStop();
     });
@@ -57,7 +57,7 @@ export class WaypointsView {
     // "off" means the application owns map clicks entirely, so the affordance
     // that arms them would be misleading
     if (clickToAddWaypoint !== "off") {
-      this.pickButton = button(RC.pickOnMap, labels.pickOnMap, "crosshair");
+      this.pickButton = button(RC.pickOnMap, labels.pickOnMap, "my-location");
       this.pickButton.addEventListener("click", () => {
         context.control.togglePickOnMap();
       });
