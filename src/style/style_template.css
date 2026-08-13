@@ -206,7 +206,8 @@
   --maptiler-routing-muted-color: #6b7280;
   --maptiler-routing-accent: #3174ff;
   --maptiler-routing-accent-contrast: #fff;
-  --maptiler-routing-border-color: #d5dced;
+  --maptiler-routing-border-color: #c1cfe4;
+  --maptiler-routing-field-hover: #f2f6ff;
   --maptiler-routing-danger-color: #d92d20;
   --maptiler-routing-icon-size: 18px;
   --maptiler-routing-radius: 10px;
@@ -430,22 +431,56 @@
   opacity: 0.5;
 }
 
+/* Search field states: white with a #c1cfe4 border by default, a #f2f6ff tint
+   on hover, and the accent border while focused — with a clear button inside
+   the field as soon as it holds a value. */
 .maptiler-routing-waypoint-field {
   display: flex;
   align-items: center;
   flex: 1;
   min-width: 0;
-  gap: 8px;
-  padding: 0 10px;
+  gap: 6px;
+  padding: 0 8px;
   height: 42px;
   background: var(--maptiler-routing-surface);
   border: 1px solid var(--maptiler-routing-border-color);
-  border-radius: var(--maptiler-routing-radius-small);
+  border-radius: 8px;
   position: relative;
+  transition:
+    background var(--maptiler-routing-transition-duration) ease,
+    border-color var(--maptiler-routing-transition-duration) ease;
+}
+
+.maptiler-routing-waypoint-field:hover {
+  background: var(--maptiler-routing-field-hover);
 }
 
 .maptiler-routing-waypoint-field:focus-within {
+  background: var(--maptiler-routing-surface);
   border-color: var(--maptiler-routing-accent);
+}
+
+.maptiler-routing-waypoint-field:has(.maptiler-routing-waypoint-clear:not([hidden])) {
+  padding-right: 12px;
+}
+
+.maptiler-routing .maptiler-routing-waypoint-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--maptiler-routing-muted-color);
+}
+
+.maptiler-routing .maptiler-routing-waypoint-clear:hover {
+  color: var(--maptiler-routing-text-color);
+}
+
+.maptiler-routing-waypoint-clear .maptiler-routing-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .maptiler-routing-waypoint-pin {
@@ -469,29 +504,51 @@
 
 /* Suggestions */
 
+/* SearchResultList: a white card with a 6px radius and a shadow, holding rows
+   of icon, one or two lines of text, and a chevron. */
 .maptiler-routing-suggestions {
   position: absolute;
-  top: calc(100% + 2px);
+  top: calc(100% + 4px);
   left: 0;
   right: 0;
   z-index: 2;
-  max-height: 240px;
+  max-height: 285px;
   overflow-y: auto;
   list-style: none;
   margin: 0;
-  padding: 4px;
+  padding: 0;
   background: var(--maptiler-routing-surface);
-  border: 1px solid var(--maptiler-routing-border-color);
-  border-radius: var(--maptiler-routing-radius-small);
+  border-radius: 6px;
   box-shadow: var(--maptiler-routing-shadow);
 }
 
 .maptiler-routing-suggestion {
   display: flex;
-  flex-direction: column;
-  padding: 6px 8px;
+  align-items: center;
+  gap: 8px;
+  min-height: 57px;
+  padding: 8px;
   border-radius: var(--maptiler-routing-radius-small);
   cursor: pointer;
+}
+
+.maptiler-routing-suggestion-lines {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.maptiler-routing-suggestion > .maptiler-routing-icon {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  color: var(--maptiler-routing-muted-color);
+}
+
+.maptiler-routing-suggestion > .maptiler-routing-icon:last-child {
+  width: 16px;
+  height: 16px;
 }
 
 .maptiler-routing-suggestion:hover,
@@ -815,6 +872,8 @@
   }
 }
 
+/* ── Icon masks — generated from src/style/svg/routing-*.svg ── */
+
 .maptiler-routing-icon[data-icon="chevron-down"] {
   -webkit-mask-image: url([src/style/svg/routing-chevron-down.svg]);
   mask-image: url([src/style/svg/routing-chevron-down.svg]);
@@ -828,6 +887,11 @@
 .maptiler-routing-icon[data-icon="chevron-right"] {
   -webkit-mask-image: url([src/style/svg/routing-chevron-right.svg]);
   mask-image: url([src/style/svg/routing-chevron-right.svg]);
+}
+
+.maptiler-routing-icon[data-icon="clear"] {
+  -webkit-mask-image: url([src/style/svg/routing-clear.svg]);
+  mask-image: url([src/style/svg/routing-clear.svg]);
 }
 
 .maptiler-routing-icon[data-icon="close"] {
@@ -918,6 +982,16 @@
 .maptiler-routing-icon[data-icon="my-location"] {
   -webkit-mask-image: url([src/style/svg/routing-my-location.svg]);
   mask-image: url([src/style/svg/routing-my-location.svg]);
+}
+
+.maptiler-routing-icon[data-icon="place-area"] {
+  -webkit-mask-image: url([src/style/svg/routing-place-area.svg]);
+  mask-image: url([src/style/svg/routing-place-area.svg]);
+}
+
+.maptiler-routing-icon[data-icon="place-water"] {
+  -webkit-mask-image: url([src/style/svg/routing-place-water.svg]);
+  mask-image: url([src/style/svg/routing-place-water.svg]);
 }
 
 .maptiler-routing-icon[data-icon="plus"] {

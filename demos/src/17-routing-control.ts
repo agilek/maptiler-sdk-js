@@ -151,8 +151,8 @@ const TRANSLATIONS: Record<string, MaptilerRoutingControlOptions["labels"]> = {
   en: undefined,
   fr: {
     title: "Itinéraire",
-    from: "Point de départ",
-    to: "Destination",
+    from: "Départ",
+    to: "Arrivée",
     stop: "Étape",
     addStop: "Ajouter une étape",
     routes: "Itinéraires",
@@ -164,9 +164,9 @@ const TRANSLATIONS: Record<string, MaptilerRoutingControlOptions["labels"]> = {
   },
   de: {
     title: "Route",
-    from: "Startpunkt",
+    from: "Start",
     to: "Ziel",
-    stop: "Zwischenstopp",
+    stop: "Stopp",
     addStop: "Zwischenstopp hinzufügen",
     routes: "Routen",
     loading: "Route wird berechnet…",

@@ -1,0 +1,141 @@
+- generic [active]:
+  - generic [ref=f119e1]:
+    - generic:
+      - region "Map" [ref=f119e2]
+      - button "Map marker" [ref=f119e22]
+    - generic:
+      - generic:
+        - generic [ref=f119e41]:
+          - button "Close the directions panel" [expanded] [ref=f119e110] [cursor=pointer]
+          - region "Directions" [ref=f119e111]:
+            - generic [ref=f119e113]:
+              - radiogroup "Transport mode" [ref=f119e114]:
+                - radio "Car" [checked] [ref=f119e115] [cursor=pointer]
+                - radio "Truck" [ref=f119e118] [cursor=pointer]
+                - radio "Bike" [ref=f119e121] [cursor=pointer]
+                - radio "Walk" [ref=f119e124] [cursor=pointer]
+              - generic [ref=f119e127]:
+                - list [ref=f119e128]:
+                  - listitem [ref=f119e129]:
+                    - button "Reorder this stop" [ref=f119e130] [cursor=pointer]
+                    - generic [ref=f119e132]:
+                      - combobox "Choose a starting point" [ref=f119e134]
+                      - button "Clear this field" [ref=f119e135] [cursor=pointer]
+                    - button "Remove this stop" [disabled] [ref=f119e137]
+                  - listitem [ref=f119e139]:
+                    - button "Reorder this stop" [ref=f119e140] [cursor=pointer]
+                    - generic [ref=f119e142]:
+                      - combobox "Choose a destination" [ref=f119e144]: Vítězná 1058/5, 360 01 Karlovy Vary, Czechia
+                      - button "Clear this field" [ref=f119e145] [cursor=pointer]
+                    - button "Remove this stop" [ref=f119e147] [cursor=pointer]
+                - generic [ref=f119e149]:
+                  - button "Add a stop" [ref=f119e150] [cursor=pointer]
+                  - button "Add a stop from the map" [ref=f119e152] [cursor=pointer]
+              - generic [ref=f119e154]:
+                - combobox "Routes" [ref=f119e156]:
+                  - option "Fastest" [selected]
+                  - option "Shortest"
+                  - option "Balanced"
+                - textbox "Departure" [ref=f119e158]
+                - group "Avoid" [ref=f119e160]:
+                  - generic [ref=f119e162]:
+                    - checkbox "Tolls" [ref=f119e163]
+                    - generic [ref=f119e164]: Tolls
+                  - generic [ref=f119e165]:
+                    - checkbox "Motorways" [ref=f119e166]
+                    - generic [ref=f119e167]: Motorways
+                  - generic [ref=f119e168]:
+                    - checkbox "Ferries" [ref=f119e169]
+                    - generic [ref=f119e170]: Ferries
+                - radiogroup "Distance units" [ref=f119e172]:
+                  - radio "km" [checked] [ref=f119e173] [cursor=pointer]
+                  - radio "mi" [ref=f119e174] [cursor=pointer]
+              - generic [ref=f119e175]:
+                - status [ref=f119e176]: Pick a start and a destination to see routes.
+                - list
+        - generic [ref=f119e177]:
+          - button "Zoom in" [ref=f119e178] [cursor=pointer]
+          - button "Zoom out" [ref=f119e180] [cursor=pointer]
+          - button "Drag to rotate map, click to reset north" [ref=f119e182]
+        - button "Find my location" [ref=f119e185] [cursor=pointer]
+      - group [ref=f119e187]:
+        - generic [ref=f119e188]:
+          - link "© MapTiler" [ref=f119e189] [cursor=pointer]:
+            - /url: https://www.maptiler.com/copyright/
+          - link "© OpenStreetMap contributors" [ref=f119e190] [cursor=pointer]:
+            - /url: https://www.openstreetmap.org/copyright
+  - generic [ref=f119e44]:
+    - heading "Routing control" [level=1] [ref=f119e45]
+    - paragraph [ref=f119e46]: Every button below reconfigures the routing control on the right by rebuilding the control with new options.
+    - generic [ref=f119e47]:
+      - generic [ref=f119e48]: Transport modes
+      - generic [ref=f119e49]:
+        - checkbox "Car" [checked] [ref=f119e50]
+        - text: Car
+      - generic [ref=f119e51]:
+        - checkbox "Truck" [checked] [ref=f119e52]
+        - text: Truck
+      - generic [ref=f119e53]:
+        - checkbox "Bike" [checked] [ref=f119e54]
+        - text: Bike
+      - generic [ref=f119e55]:
+        - checkbox "Walk" [checked] [ref=f119e56]
+        - text: Walk
+      - paragraph [ref=f119e57]: "Tab content:"
+      - button "Icon + name" [ref=f119e58] [cursor=pointer]
+      - button "Icon only" [ref=f119e59] [cursor=pointer]
+      - button "Name only" [ref=f119e60] [cursor=pointer]
+      - button "Nothing" [ref=f119e61] [cursor=pointer]
+      - generic [ref=f119e62]:
+        - checkbox "Show the switcher when only one mode is left" [checked] [ref=f119e63]
+        - text: Show the switcher when only one mode is left
+      - paragraph [ref=f119e64]: Untick every mode, choose "Nothing", or leave a single mode with the box unticked — the switcher leaves no trace behind in every case.
+      - button "Relabelled car only" [ref=f119e65] [cursor=pointer]
+    - generic [ref=f119e66]:
+      - generic [ref=f119e67]: Filters
+      - button "All" [ref=f119e68] [cursor=pointer]
+      - button "Units only" [ref=f119e69] [cursor=pointer]
+      - button "None" [ref=f119e70] [cursor=pointer]
+    - generic [ref=f119e71]:
+      - generic [ref=f119e72]: Interactions
+      - generic [ref=f119e73]:
+        - checkbox "Place search" [checked] [ref=f119e74]
+        - text: Place search
+      - generic [ref=f119e75]:
+        - checkbox "Drag waypoints on map" [checked] [ref=f119e76]
+        - text: Drag waypoints on map
+      - generic [ref=f119e77]:
+        - checkbox "Turn-by-turn" [checked] [ref=f119e78]
+        - text: Turn-by-turn
+      - generic [ref=f119e79]:
+        - 'checkbox "Launcher button (unticked: always open)" [checked] [ref=f119e80]'
+        - text: "Launcher button (unticked: always open)"
+    - generic [ref=f119e81]:
+      - generic [ref=f119e82]: Theme
+      - textbox [ref=f119e83]: "#3174ff"
+      - button "Dark preset" [ref=f119e84] [cursor=pointer]
+      - button "Reset" [ref=f119e85] [cursor=pointer]
+    - generic [ref=f119e86]:
+      - generic [ref=f119e87]: Localization
+      - button "EN" [ref=f119e88] [cursor=pointer]
+      - button "FR" [ref=f119e89] [cursor=pointer]
+      - button "DE" [ref=f119e90] [cursor=pointer]
+      - button "Compact durations" [ref=f119e91] [cursor=pointer]
+    - generic [ref=f119e92]:
+      - generic [ref=f119e93]: Escape hatches
+      - button "Custom route card" [ref=f119e94] [cursor=pointer]
+      - button "Default cards" [ref=f119e95] [cursor=pointer]
+      - button "Unstyled" [ref=f119e96] [cursor=pointer]
+    - generic [ref=f119e97]:
+      - generic [ref=f119e98]: Programmatic
+      - button "Set waypoints" [ref=f119e99] [cursor=pointer]
+      - button "Select route 2" [ref=f119e100] [cursor=pointer]
+      - button "Open turn-by-turn" [ref=f119e101] [cursor=pointer]
+      - button "Open / close panel" [ref=f119e102] [cursor=pointer]
+    - generic [ref=f119e103]:
+      - generic [ref=f119e104]: Style
+      - button "Streets" [ref=f119e105] [cursor=pointer]
+      - button "Dark" [ref=f119e106] [cursor=pointer]
+    - generic [ref=f119e107]:
+      - generic [ref=f119e108]: Events
+      - generic [ref=f119e109]: routinguiopen routinguiclose routinguiopen

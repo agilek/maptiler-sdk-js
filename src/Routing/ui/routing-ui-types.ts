@@ -83,14 +83,22 @@ export type RoutingControlLabels = {
   title?: string;
   /** Accessible name of the launcher while the panel is open. */
   close?: string;
-  /** Placeholder of the first waypoint row. */
+  /** Placeholder and accessible name of the first waypoint row. Default: `"From"`. */
   from?: string;
-  /** Placeholder of the last waypoint row. */
+  /** Placeholder and accessible name of the last waypoint row. Default: `"To"`. */
   to?: string;
-  /** Placeholder of intermediate waypoint rows. */
+  /** Placeholder and accessible name of intermediate waypoint rows. Default: `"Stop"`. */
   stop?: string;
   /** The "Add a stop" action. */
   addStop?: string;
+  /** Accessible name of the clear button inside a waypoint field. */
+  clearWaypoint?: string;
+  /** The "use my current location" row offered under an empty field. */
+  myLocation?: string;
+  /** The "pick this point on the map" row offered under an empty field. */
+  selectFromMap?: string;
+  /** Shown in a field while the browser is locating the visitor. */
+  locating?: string;
   /** Accessible name of a row's remove button. */
   removeStop?: string;
   /** Accessible name of a row's reorder handle. */
@@ -232,6 +240,8 @@ export type RoutingControlTheme = {
   mutedColor?: string;
   /** Default border color. */
   borderColor?: string;
+  /** Tint a search field takes while the pointer is over it. */
+  fieldHover?: string;
   /** Color of error text. */
   dangerColor?: string;
   /** Corner radius of the panel and its cards. */
@@ -449,6 +459,17 @@ export type MaptilerRoutingControlOptions = {
    * Default: `true`
    */
   dragWaypointsOnMap?: boolean;
+
+  /**
+   * Whether right-clicking the map fills a waypoint with that point.
+   *
+   * It goes to the field the user is in, or to the first empty one, and is
+   * independent of {@link MaptilerRoutingControlOptions.clickToAddWaypoint} —
+   * a right-click is unambiguous, so it needs no arming.
+   *
+   * Default: `true`
+   */
+  pickWaypointOnRightClick?: boolean;
 
   /**
    * Whether waypoint rows can be reordered, with the row handle or with

@@ -71,6 +71,9 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
   private queue?: RenderQueue;
 
   private geocoder?: RoutingGeocoder;
+
+  /** Field a map pick should fill, when it was started from one. */
+  private pickTargetId?: string;
   private opened: boolean;
   private picking = false;
   private savedCursor = "";
@@ -420,12 +423,25 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
 
     const onMoveStart = () => this.waypointsView?.closeAllSuggestions();
 
+    /**
+     * Right-click fills a waypoint straight away: the gesture is unambiguous,
+     * so unlike a left click it needs no arming. It goes to the field the user
+     * is in, falling back to the first empty one.
+     */
+    const onContextMenu = (event: MapMouseEvent) => {
+      if (!this.options.pickWaypointOnRightClick) return;
+      event.preventDefault();
+      this.addWaypointFromMap([event.lngLat.lng, event.lngLat.lat], this.waypointsView?.getFocusedWaypointId());
+    };
+
     map.on("click", onMapClick);
     map.on("movestart", onMoveStart);
+    map.on("contextmenu", onContextMenu);
 
     this.dispose.push(() => {
       map.off("click", onMapClick);
       map.off("movestart", onMoveStart);
+      map.off("contextmenu", onContextMenu);
     });
   }
 
@@ -437,11 +453,21 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
   }
 
   /** Adds a waypoint picked on the map, then names it in the background. */
-  private addWaypointFromMap(lngLat: [number, number]): void {
+  private addWaypointFromMap(lngLat: [number, number], targetId?: string): void {
     const routing = this.routing;
     if (!routing) return;
 
     const waypoints = routing.getWaypoints();
+
+    // aimed at one field: from its "select from map" row, or from a
+    // right-click while the caret was in it
+    const target = targetId ?? this.pickTargetId;
+    if (target !== undefined && waypoints.some((waypoint) => waypoint.id === target)) {
+      this.pickTargetId = undefined;
+      routing.updateWaypoint(target, { lngLat, label: undefined });
+      this.nameWaypoint(target, lngLat);
+      return;
+    }
     // fill the first empty row if there is one, otherwise insert before the
     // destination, which is where a user adding a stop expects it
     const emptyIndex = waypoints.findIndex((waypoint) => waypoint.lngLat === null);
@@ -624,12 +650,19 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
   /**
    * Arms or disarms picking a waypoint by clicking the map.
    *
-   * No-op when `clickToAddWaypoint` is `"off"` or `"always"`, where there is
-   * nothing to arm.
+   * @param waypointId - Fill this waypoint with the picked point, rather than
+   * the first empty one. Used by the "select from map" row, which belongs to a
+   * particular field.
+   *
+   * No-op when `clickToAddWaypoint` is `"off"`, where map clicks belong to the
+   * application.
    */
-  togglePickOnMap(): this {
-    if (this.options.clickToAddWaypoint !== "armed") return this;
-    this.setPicking(!this.picking);
+  togglePickOnMap(waypointId?: string): this {
+    if (this.options.clickToAddWaypoint === "off") return this;
+
+    const next = !this.picking || (waypointId !== undefined && waypointId !== this.pickTargetId);
+    this.pickTargetId = next ? waypointId : undefined;
+    this.setPicking(next);
     return this;
   }
 
@@ -651,6 +684,7 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
   private setPicking(picking: boolean): void {
     if (this.picking === picking) return;
     this.picking = picking;
+    if (!picking) this.pickTargetId = undefined;
 
     const canvas = this.map?.getCanvas();
     if (canvas) {

@@ -39,10 +39,12 @@ export const RC = Object.freeze({
   waypointField: "maptiler-routing-waypoint-field",
   waypointPin: "maptiler-routing-waypoint-pin",
   waypointInput: "maptiler-routing-waypoint-input",
+  waypointClear: "maptiler-routing-waypoint-clear",
   waypointRemove: "maptiler-routing-waypoint-remove",
 
   suggestions: "maptiler-routing-suggestions",
   suggestion: "maptiler-routing-suggestion",
+  suggestionLines: "maptiler-routing-suggestion-lines",
   suggestionPrimary: "maptiler-routing-suggestion-primary",
   suggestionSecondary: "maptiler-routing-suggestion-secondary",
 
@@ -103,6 +105,7 @@ export const CSS_VARS: Readonly<Record<keyof RoutingControlTheme, string>> = Obj
   textColor: "--maptiler-routing-text-color",
   mutedColor: "--maptiler-routing-muted-color",
   borderColor: "--maptiler-routing-border-color",
+  fieldHover: "--maptiler-routing-field-hover",
   dangerColor: "--maptiler-routing-danger-color",
   radius: "--maptiler-routing-radius",
   radiusSmall: "--maptiler-routing-radius-small",
@@ -197,10 +200,14 @@ export const DEFAULT_SEARCH_LIMIT = 5;
 export const DEFAULT_LABELS: Required<RoutingControlLabels> = Object.freeze({
   title: "Directions",
   close: "Close the directions panel",
-  from: "Choose a starting point",
-  to: "Choose a destination",
-  stop: "Choose a stop",
+  from: "From",
+  to: "To",
+  stop: "Stop",
   addStop: "Add a stop",
+  clearWaypoint: "Clear this field",
+  myLocation: "My location",
+  selectFromMap: "Select from map",
+  locating: "Locating…",
   removeStop: "Remove this stop",
   reorderStop: "Reorder this stop",
   pickOnMap: "Add a stop from the map",
@@ -280,6 +287,7 @@ export type ResolvedControlOptions = {
   search: ResolvedSearchOptions;
   clickToAddWaypoint: RoutingClickToAdd;
   dragWaypointsOnMap: boolean;
+  pickWaypointOnRightClick: boolean;
   reorderWaypoints: boolean;
   turnByTurn: ResolvedTurnByTurnOptions;
   fitBoundsOnResult: boolean;
@@ -332,6 +340,7 @@ export function resolveControlOptions(options: MaptilerRoutingControlOptions = {
     },
     clickToAddWaypoint: options.clickToAddWaypoint ?? "armed",
     dragWaypointsOnMap: options.dragWaypointsOnMap ?? true,
+    pickWaypointOnRightClick: options.pickWaypointOnRightClick ?? true,
     reorderWaypoints: options.reorderWaypoints ?? true,
     turnByTurn: {
       enabled: options.turnByTurn !== false,

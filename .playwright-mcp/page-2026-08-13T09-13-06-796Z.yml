@@ -1,0 +1,83 @@
+- generic [active]:
+  - generic [ref=f130e1]:
+    - generic:
+      - region "Map" [ref=f130e2]
+      - button "Map marker" [ref=f130e3]
+      - button "Map marker" [ref=f130e22]
+    - generic:
+      - button "Directions" [ref=f130e42] [cursor=pointer]
+      - generic:
+        - group
+  - generic [ref=f130e44]:
+    - heading "Routing control" [level=1] [ref=f130e45]
+    - paragraph [ref=f130e46]: Every button below reconfigures the routing control on the right by rebuilding the control with new options.
+    - generic [ref=f130e47]:
+      - generic [ref=f130e48]: Transport modes
+      - generic [ref=f130e49]:
+        - checkbox "Car" [checked] [ref=f130e50]
+        - text: Car
+      - generic [ref=f130e51]:
+        - checkbox "Truck" [checked] [ref=f130e52]
+        - text: Truck
+      - generic [ref=f130e53]:
+        - checkbox "Bike" [checked] [ref=f130e54]
+        - text: Bike
+      - generic [ref=f130e55]:
+        - checkbox "Walk" [checked] [ref=f130e56]
+        - text: Walk
+      - paragraph [ref=f130e57]: "Tab content:"
+      - button "Icon + name" [ref=f130e58] [cursor=pointer]
+      - button "Icon only" [ref=f130e59] [cursor=pointer]
+      - button "Name only" [ref=f130e60] [cursor=pointer]
+      - button "Nothing" [ref=f130e61] [cursor=pointer]
+      - generic [ref=f130e62]:
+        - checkbox "Show the switcher when only one mode is left" [checked] [ref=f130e63]
+        - text: Show the switcher when only one mode is left
+      - paragraph [ref=f130e64]: Untick every mode, choose "Nothing", or leave a single mode with the box unticked — the switcher leaves no trace behind in every case.
+      - button "Relabelled car only" [ref=f130e65] [cursor=pointer]
+    - generic [ref=f130e66]:
+      - generic [ref=f130e67]: Filters
+      - button "All" [ref=f130e68] [cursor=pointer]
+      - button "Units only" [ref=f130e69] [cursor=pointer]
+      - button "None" [ref=f130e70] [cursor=pointer]
+    - generic [ref=f130e71]:
+      - generic [ref=f130e72]: Interactions
+      - generic [ref=f130e73]:
+        - checkbox "Place search" [checked] [ref=f130e74]
+        - text: Place search
+      - generic [ref=f130e75]:
+        - checkbox "Drag waypoints on map" [checked] [ref=f130e76]
+        - text: Drag waypoints on map
+      - generic [ref=f130e77]:
+        - checkbox "Turn-by-turn" [checked] [ref=f130e78]
+        - text: Turn-by-turn
+      - generic [ref=f130e79]:
+        - 'checkbox "Launcher button (unticked: always open)" [checked] [ref=f130e80]'
+        - text: "Launcher button (unticked: always open)"
+    - generic [ref=f130e81]:
+      - generic [ref=f130e82]: Theme
+      - textbox [ref=f130e83]: "#3174ff"
+      - button "Dark preset" [ref=f130e84] [cursor=pointer]
+      - button "Reset" [ref=f130e85] [cursor=pointer]
+    - generic [ref=f130e86]:
+      - generic [ref=f130e87]: Localization
+      - button "EN" [ref=f130e88] [cursor=pointer]
+      - button "FR" [ref=f130e89] [cursor=pointer]
+      - button "DE" [ref=f130e90] [cursor=pointer]
+      - button "Compact durations" [ref=f130e91] [cursor=pointer]
+    - generic [ref=f130e92]:
+      - generic [ref=f130e93]: Escape hatches
+      - button "Custom route card" [ref=f130e94] [cursor=pointer]
+      - button "Default cards" [ref=f130e95] [cursor=pointer]
+      - button "Unstyled" [ref=f130e96] [cursor=pointer]
+    - generic [ref=f130e97]:
+      - generic [ref=f130e98]: Programmatic
+      - button "Set waypoints" [ref=f130e99] [cursor=pointer]
+      - button "Select route 2" [ref=f130e100] [cursor=pointer]
+      - button "Open turn-by-turn" [ref=f130e101] [cursor=pointer]
+      - button "Open / close panel" [ref=f130e102] [cursor=pointer]
+    - generic [ref=f130e103]:
+      - generic [ref=f130e104]: Style
+      - button "Streets" [ref=f130e105] [cursor=pointer]
+      - button "Dark" [ref=f130e106] [cursor=pointer]
+    - generic [ref=f130e107]: Events

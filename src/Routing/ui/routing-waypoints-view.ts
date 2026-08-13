@@ -102,6 +102,13 @@ export class WaypointsView {
     setBooleanAttribute(this.addStopButton, "aria-disabled", waypoints.length >= maxWaypoints);
   }
 
+  /** Shows the in-field clear button only when there is something to clear. */
+  private syncClearButton(row: WaypointRow): void {
+    const clear = row.element.querySelector<HTMLButtonElement>(`.${RC.waypointClear}`);
+    if (!clear) return;
+    clear.hidden = row.input.value.trim() === "";
+  }
+
   /** Reflects the armed state of the "add from map" toggle. */
   setPicking(picking: boolean): void {
     if (!this.pickButton) return;
@@ -128,6 +135,8 @@ export class WaypointsView {
     if (document.activeElement !== row.input) {
       row.input.value = waypoint.label ?? (waypoint.lngLat ? formatCoordinate(waypoint.lngLat) : "");
     }
+
+    this.syncClearButton(row);
 
     const pin = row.element.querySelector<HTMLElement>(`.${RC.waypointPin}`);
     if (pin) pin.dataset.icon = role === "origin" ? "route-start" : role === "destination" ? "route-pin" : "route-stop";
@@ -173,9 +182,15 @@ export class WaypointsView {
     list.setAttribute("role", "listbox");
     list.hidden = true;
 
+    // the design puts a clear button inside the field, distinct from the
+    // delete button outside it: one empties the field, the other removes the
+    // stop altogether
+    const clear = button(RC.waypointClear, labels.clearWaypoint, "clear");
+    clear.hidden = true;
+
     const remove = button(RC.waypointRemove, labels.removeStop, "trash");
 
-    field.append(pin, input, list);
+    field.append(pin, input, clear, list);
     element.append(handle, field, remove);
 
     const row: WaypointRow = { element, input, list, activeSuggestion: -1, suggestions: [] };
@@ -193,7 +208,18 @@ export class WaypointsView {
   private wireRow(row: WaypointRow, id: string): void {
     const { search, formatters } = this.context.options;
 
+    row.element.querySelector(`.${RC.waypointClear}`)?.addEventListener("click", () => {
+      // clears the field without removing the row: the stop stays, waiting for
+      // a new value
+      row.input.value = "";
+      this.syncClearButton(row);
+      this.closeSuggestions(row);
+      this.context.routing.updateWaypoint(id, { lngLat: null, label: undefined });
+      row.input.focus();
+    });
+
     row.input.addEventListener("input", () => {
+      this.syncClearButton(row);
       if (!search.enabled) return;
       const { lng, lat } = this.context.map.getCenter();
       this.context.geocoder.search(row.input.value, [lng, lat], (features) => {
@@ -205,6 +231,12 @@ export class WaypointsView {
 
     row.input.addEventListener("keydown", (event) => {
       this.handleKeydown(event, row, id);
+    });
+
+    row.input.addEventListener("focus", () => {
+      // an empty field offers the two ways of filling it that are not typing,
+      // as the design's search results do
+      if (row.input.value.trim() === "") this.renderActionRows(row, id);
     });
 
     row.input.addEventListener("blur", () => {
@@ -288,6 +320,93 @@ export class WaypointsView {
     }
   }
 
+  /**
+   * The two non-typing ways to fill a field: the visitor's own position, and
+   * a point picked off the map.
+   */
+  private renderActionRows(row: WaypointRow, id: string): void {
+    const { labels } = this.context.options;
+    const fragment = document.createDocumentFragment();
+
+    const actions: { icon: string; label: string; run: () => void }[] = [
+      {
+        icon: "my-location",
+        label: labels.myLocation,
+        run: () => {
+          this.useMyLocation(row, id);
+        },
+      },
+      {
+        icon: "plus",
+        label: labels.selectFromMap,
+        run: () => {
+          this.context.control.togglePickOnMap(id);
+        },
+      },
+    ];
+
+    for (const action of actions) {
+      const option = el("li", RC.suggestion);
+      option.setAttribute("role", "option");
+      option.setAttribute("aria-selected", "false");
+      option.dataset.action = action.icon;
+
+      const lines = el("span", RC.suggestionLines);
+      lines.append(el("span", RC.suggestionPrimary, action.label));
+      option.append(icon(action.icon), lines, icon("chevron-right"));
+
+      // pointerdown, so the input's blur does not tear the list down first
+      option.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        this.closeSuggestions(row);
+        action.run();
+      });
+
+      fragment.append(option);
+    }
+
+    row.list.replaceChildren(fragment);
+    this.openSuggestions(row);
+  }
+
+  /** Fills a waypoint from the browser's geolocation. */
+  private useMyLocation(row: WaypointRow, id: string): void {
+    const { labels } = this.context.options;
+
+    // typed as always present, but absent in insecure contexts
+    if (!(navigator as { geolocation?: Geolocation }).geolocation) {
+      console.warn("[MaptilerRoutingControl]: This browser exposes no geolocation, so 'My location' cannot be used.");
+      return;
+    }
+
+    row.input.value = labels.locating;
+    this.syncClearButton(row);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lngLat: [number, number] = [position.coords.longitude, position.coords.latitude];
+        // the design shows the field reading "My location" rather than an
+        // address, so the label is set rather than reverse-geocoded
+        this.context.routing.updateWaypoint(id, { lngLat, label: labels.myLocation });
+      },
+      () => {
+        // permission denied or unavailable: leave the field as the user found it
+        row.input.value = "";
+        this.syncClearButton(row);
+        console.warn("[MaptilerRoutingControl]: The browser could not provide a location.");
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 },
+    );
+  }
+
+  /** Id of the waypoint whose field currently has focus, if any. */
+  getFocusedWaypointId(): string | undefined {
+    for (const [id, row] of this.rows) {
+      if (document.activeElement === row.input) return id;
+    }
+    return undefined;
+  }
+
   private renderSuggestions(row: WaypointRow, id: string): void {
     const { formatters } = this.context.options;
 
@@ -306,7 +425,9 @@ export class WaypointsView {
       setDataFlag(option, "active", index === row.activeSuggestion);
 
       const primary = (feature as { text?: string }).text ?? "";
-      option.append(el("span", RC.suggestionPrimary, primary), el("span", RC.suggestionSecondary, formatters.waypointLabel(feature)));
+      const lines = el("span", RC.suggestionLines);
+      lines.append(el("span", RC.suggestionPrimary, primary), el("span", RC.suggestionSecondary, formatters.waypointLabel(feature)));
+      option.append(icon("place-area"), lines, icon("chevron-right"));
 
       // pointerdown, not click: the input's blur would otherwise tear the list
       // down before a click could land on it
