@@ -264,7 +264,7 @@
    reads as one of the same family as zoom and compass sitting beside it. The
    selector carries the element as well as the class so it outranks the button
    reset below, which would otherwise strip the background back to none. */
-.maptiler-routing button.maptiler-routing-launcher {
+.maptiler-routing .maptiler-routing-launcher {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -278,7 +278,7 @@
   color: var(--maptiler-routing-text-color);
 }
 
-.maptiler-routing button.maptiler-routing-launcher:hover {
+.maptiler-routing .maptiler-routing-launcher:hover {
   background: var(--maptiler-routing-surface-alt);
 }
 
@@ -312,15 +312,24 @@
 
 /* Buttons */
 
-.maptiler-routing button {
+/* Neutralises whatever the host page does to buttons — a global
+   `button { margin: … }` is common and would otherwise push the panel's rows
+   apart. Wrapped in `:where()` so the reset carries no specificity of its own:
+   the component rules below are plain classes and would otherwise lose to a
+   class+element selector, which is how the launcher lost its background and
+   the transport tabs lost their font size. */
+.maptiler-routing :where(button) {
   font: inherit;
   color: inherit;
   cursor: pointer;
   background: none;
   border: none;
+  margin: 0;
+  padding: 0;
+  text-align: inherit;
 }
 
-.maptiler-routing button:disabled {
+.maptiler-routing :where(button):disabled {
   opacity: 0.45;
   cursor: default;
 }
@@ -355,13 +364,17 @@
 
 /* Transport modes */
 
+/* TransportModesSwitch, "Full" variant: a 44px rail with a 4px inset, holding
+   36px tabs. Both heights are explicit — left to the content, the tab and the
+   rail resolve to different heights and the inset stops looking even. */
 .maptiler-routing-modes {
   display: flex;
+  align-items: center;
   gap: 4px;
   padding: 4px;
   margin-bottom: 16px;
   background: var(--maptiler-routing-surface-alt);
-  border-radius: var(--maptiler-routing-radius-small);
+  border-radius: 8px;
 }
 
 .maptiler-routing-mode {
@@ -369,11 +382,23 @@
   flex: 1;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 7px 4px;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
   border-radius: var(--maptiler-routing-radius-small);
   color: var(--maptiler-routing-muted-color);
+  font-size: 14px;
+  line-height: 21px;
   transition: background var(--maptiler-routing-transition-duration) ease;
+}
+
+.maptiler-routing-mode[aria-checked="true"] {
+  font-weight: 600;
+}
+
+.maptiler-routing-mode .maptiler-routing-icon {
+  width: 20px;
+  height: 20px;
 }
 
 .maptiler-routing-mode:hover {
@@ -498,7 +523,7 @@
 .maptiler-routing-add-stop {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 6px 8px;
   border-radius: var(--maptiler-routing-radius-small);
   color: var(--maptiler-routing-accent);

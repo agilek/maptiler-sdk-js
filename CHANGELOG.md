@@ -10,6 +10,7 @@
   - Every icon comes from the Map Controls UI library: transport modes, maneuver arrows, waypoint pins and the interface glyphs. An unknown maneuver kind still falls back to the straight arrow and writes `data-maneuver`, so it can be styled without an SDK release.
   - Each route carries a travel-time badge halfway along its line, matching the Map Controls UI design; clicking one selects that route. Configure or disable it with `routeLabels`.
   - The control opens from a map-control button carrying the route icon, which becomes a close button while the panel is open; the map's other controls stack beneath it, beside the panel. `launcher: false` renders the panel on its own.
+  - The panel's styles are isolated from the host page: a global `button { margin }` or similar no longer disturbs its layout.
   - The panel is customisable through options (which transport modes and filters exist, units, alternates, interactions), CSS custom properties and a documented class-name contract, `labels` and `formatters` for localization, and `renderers.*` hooks that replace one subsection at a time.
   - `routing.directions()` exposes the API on its own, alongside helpers for decoding polylines, joining leg geometry, flattening steps and formatting distances and durations.
   - Enable it with `routing: true` / `routingControl: true` on the map, or per call. Each computed route counts against your MapTiler Cloud API key quota.
