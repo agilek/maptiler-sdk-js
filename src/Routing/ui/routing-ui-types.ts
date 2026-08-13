@@ -322,6 +322,17 @@ export type MaptilerRoutingControlOptions = {
   modes?: readonly (RoutingProfile | RoutingModeConfig)[];
 
   /**
+   * Whether the transport tabs show their names next to the icons.
+   *
+   * `false` renders icon-only tabs; the name is kept as the tab's accessible
+   * name and tooltip, so nothing is lost for screen readers. Useful for narrow
+   * panels, or when the icons alone carry the meaning.
+   *
+   * Default: `true`
+   */
+  showModeLabels?: boolean;
+
+  /**
    * Transport mode selected on first render.
    *
    * Default: the first entry of `modes`.

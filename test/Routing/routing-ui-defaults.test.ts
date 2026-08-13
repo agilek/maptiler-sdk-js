@@ -43,6 +43,11 @@ describe("resolveControlOptions", () => {
     expect(options.collapsible).toBe(true);
     expect(options.turnByTurn.enabled).toBe(true);
     expect(options.search.enabled).toBe(true);
+    expect(options.showModeLabels).toBe(true);
+  });
+
+  it("can turn the transport tabs into icon-only buttons", () => {
+    expect(resolveControlOptions({ showModeLabels: false }).showModeLabels).toBe(false);
   });
 
   it("normalizes a profile name into a mode configuration", () => {

@@ -2028,8 +2028,11 @@ and the lifecycle (`calculate`, `cancel`, `clear`). Changes are coalesced behind
 burst of edits costs one request, and a superseded request is aborted rather than reported as an
 error.
 
-Events: `routingstart`, `routingroutes`, `routingselect`, `routingwaypoints`, `routingerror` and
-`routingclear`, all typed by name.
+Passing an empty `modes` array hides the transport switcher entirely and pins the profile.
+
+Events: `routingstart`, `routingroutes`, `routingselect`, `routingwaypoints`, `routingconfig`,
+`routingerror` and `routingclear`, all typed by name. `routingconfig` is what a custom UI listens to
+in order to follow the session when the profile, units or other settings change.
 
 #### Without a map
 
@@ -2082,6 +2085,7 @@ units, alternates, waypoint limits, and each interaction:
 ```ts
 new MaptilerRoutingControl({
   modes: [{ id: "car", label: "Drive" }, { id: "bicycle" }],
+  showModeLabels: false,                // icon-only tabs; the name stays as the accessible name
   filters: ["mode", "units"],           // "mode" | "departure" | "avoidances" | "units"
   avoidances: ["tolls", "ferry"],
   units: "mi",

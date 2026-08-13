@@ -46,7 +46,7 @@ export class FiltersView {
   }
 
   private renderModes(): void {
-    const { modes, labels, renderers, formatters } = this.context.options;
+    const { modes, labels, renderers, formatters, showModeLabels } = this.context.options;
     const selected = this.context.routing.getProfile();
 
     const replacement = renderers.transportModes?.({ modes, selected, control: this.context.control, labels, formatters });
@@ -78,7 +78,14 @@ export class FiltersView {
       if (typeof mode.icon === "function") tab.append(mode.icon());
       else tab.append(icon(mode.icon ?? PROFILE_ICONS[mode.id]));
 
-      tab.append(el("span", undefined, mode.label ?? labels.modes[mode.id] ?? mode.id));
+      const name = mode.label ?? labels.modes[mode.id] ?? mode.id;
+      if (showModeLabels) {
+        tab.append(el("span", undefined, name));
+      } else {
+        // icon-only, but the name still names the tab for assistive tech
+        tab.setAttribute("aria-label", name);
+        tab.title = name;
+      }
 
       tab.addEventListener("click", () => {
         this.context.routing.setProfile(mode.id);

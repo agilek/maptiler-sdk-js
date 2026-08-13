@@ -575,6 +575,23 @@ export type RoutingErrorEvent = RoutingEventBase & {
   error: Error;
 };
 
+/** Which part of the session's configuration changed. */
+export type RoutingConfigChange = "profile" | "profileOptions" | "units" | "departureTime" | "arrivalTime" | "alternates";
+
+/**
+ * Payload of `routingconfig`, fired when the session's configuration changes.
+ *
+ * @remarks
+ * This is what a UI listens to in order to stay in step with the session:
+ * switching profile changes which options apply, and switching units changes
+ * every distance already on screen. Fired only when a value actually changes.
+ */
+export type RoutingConfigEvent = RoutingEventBase & {
+  type: "routingconfig";
+  /** What changed. */
+  change: RoutingConfigChange;
+};
+
 /** Payload of `routingclear`, fired when drawn routes are removed. */
 export type RoutingClearEvent = RoutingEventBase & {
   type: "routingclear";
@@ -586,6 +603,7 @@ export type RoutingEventType = {
   routingroutes: RoutingRoutesEvent;
   routingselect: RoutingSelectEvent;
   routingwaypoints: RoutingWaypointsEvent;
+  routingconfig: RoutingConfigEvent;
   routingerror: RoutingErrorEvent;
   routingclear: RoutingClearEvent;
 };

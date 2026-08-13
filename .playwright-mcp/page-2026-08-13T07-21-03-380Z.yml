@@ -1,0 +1,124 @@
+- generic [active]:
+  - generic [ref=f46e1]:
+    - generic:
+      - region "Map" [ref=f46e2]
+      - button "Map marker" [ref=f46e3]
+      - button "Map marker" [ref=f46e22]
+    - generic:
+      - region "Directions" [ref=f46e41]:
+        - generic [ref=f46e42]:
+          - heading "Directions" [level=2] [ref=f46e43]
+          - button "Toggle the directions panel" [ref=f46e44] [cursor=pointer]
+        - generic [ref=f46e47]:
+          - generic [ref=f46e48]:
+            - radiogroup "Transport mode" [ref=f46e49]:
+              - radio "Car" [checked] [ref=f46e50] [cursor=pointer]
+              - radio "Truck" [ref=f46e53] [cursor=pointer]
+              - radio "Bike" [ref=f46e56] [cursor=pointer]
+              - radio "Walk" [ref=f46e59] [cursor=pointer]
+            - generic [ref=f46e62]:
+              - combobox "Routes" [ref=f46e64]:
+                - option "Fastest" [selected]
+                - option "Shortest"
+                - option "Balanced"
+              - textbox "Departure" [ref=f46e66]
+              - group "Avoid" [ref=f46e68]:
+                - generic [ref=f46e70]:
+                  - checkbox "Tolls" [ref=f46e71]
+                  - generic [ref=f46e72]: Tolls
+                - generic [ref=f46e73]:
+                  - checkbox "Motorways" [ref=f46e74]
+                  - generic [ref=f46e75]: Motorways
+                - generic [ref=f46e76]:
+                  - checkbox "Ferries" [ref=f46e77]
+                  - generic [ref=f46e78]: Ferries
+              - radiogroup "Distance units" [ref=f46e80]:
+                - radio "km" [checked] [ref=f46e81] [cursor=pointer]
+                - radio "mi" [ref=f46e82] [cursor=pointer]
+          - generic [ref=f46e83]:
+            - list [ref=f46e84]:
+              - listitem [ref=f46e85]:
+                - button "Reorder this stop" [ref=f46e86] [cursor=pointer]
+                - combobox "Choose a starting point" [ref=f46e90]: 47.37690, 8.54170
+                - button "Remove this stop" [ref=f46e91] [cursor=pointer]
+              - listitem [ref=f46e93]:
+                - button "Reorder this stop" [ref=f46e94] [cursor=pointer]
+                - combobox "Choose a destination" [ref=f46e98]: 50.23290, 12.87240
+                - button "Remove this stop" [ref=f46e99] [cursor=pointer]
+            - generic [ref=f46e101]:
+              - button "Add a stop" [ref=f46e102] [cursor=pointer]
+              - button "Add a stop from the map" [ref=f46e104] [cursor=pointer]
+          - generic [ref=f46e106]:
+            - status [ref=f46e107]: Calculating the route…
+            - heading "Routes" [level=3] [ref=f46e109]
+            - list
+      - generic:
+        - group
+  - generic [ref=f46e110]:
+    - heading "Routing control" [level=1] [ref=f46e111]
+    - paragraph [ref=f46e112]: Every button below reconfigures the panel on the left by rebuilding the control with new options.
+    - generic [ref=f46e113]:
+      - generic [ref=f46e114]: Transport modes
+      - generic [ref=f46e115]:
+        - checkbox "Car" [checked] [ref=f46e116]
+        - text: Car
+      - generic [ref=f46e117]:
+        - checkbox "Truck" [checked] [ref=f46e118]
+        - text: Truck
+      - generic [ref=f46e119]:
+        - checkbox "Bike" [checked] [ref=f46e120]
+        - text: Bike
+      - generic [ref=f46e121]:
+        - checkbox "Walk" [checked] [ref=f46e122]
+        - text: Walk
+      - generic [ref=f46e123]:
+        - checkbox "Show mode names" [checked] [ref=f46e124]
+        - text: Show mode names
+      - paragraph [ref=f46e125]: Untick every mode to hide the switcher completely. Untick "show mode names" for icon-only tabs.
+      - button "Relabelled car only" [ref=f46e126] [cursor=pointer]
+    - generic [ref=f46e127]:
+      - generic [ref=f46e128]: Filters
+      - button "All" [ref=f46e129] [cursor=pointer]
+      - button "Units only" [ref=f46e130] [cursor=pointer]
+      - button "None" [ref=f46e131] [cursor=pointer]
+    - generic [ref=f46e132]:
+      - generic [ref=f46e133]: Interactions
+      - generic [ref=f46e134]:
+        - checkbox "Place search" [checked] [ref=f46e135]
+        - text: Place search
+      - generic [ref=f46e136]:
+        - checkbox "Drag waypoints on map" [checked] [ref=f46e137]
+        - text: Drag waypoints on map
+      - generic [ref=f46e138]:
+        - checkbox "Turn-by-turn" [checked] [ref=f46e139]
+        - text: Turn-by-turn
+      - generic [ref=f46e140]:
+        - checkbox "Collapsible" [checked] [ref=f46e141]
+        - text: Collapsible
+    - generic [ref=f46e142]:
+      - generic [ref=f46e143]: Theme
+      - textbox [ref=f46e144]: "#3174ff"
+      - button "Dark preset" [ref=f46e145] [cursor=pointer]
+      - button "Reset" [ref=f46e146] [cursor=pointer]
+    - generic [ref=f46e147]:
+      - generic [ref=f46e148]: Localization
+      - button "EN" [ref=f46e149] [cursor=pointer]
+      - button "FR" [ref=f46e150] [cursor=pointer]
+      - button "DE" [ref=f46e151] [cursor=pointer]
+      - button "Compact durations" [ref=f46e152] [cursor=pointer]
+    - generic [ref=f46e153]:
+      - generic [ref=f46e154]: Escape hatches
+      - button "Custom route card" [ref=f46e155] [cursor=pointer]
+      - button "Default cards" [ref=f46e156] [cursor=pointer]
+      - button "Unstyled" [ref=f46e157] [cursor=pointer]
+    - generic [ref=f46e158]:
+      - generic [ref=f46e159]: Programmatic
+      - button "Set waypoints" [ref=f46e160] [cursor=pointer]
+      - button "Select route 2" [ref=f46e161] [cursor=pointer]
+      - button "Open turn-by-turn" [ref=f46e162] [cursor=pointer]
+      - button "Collapse" [ref=f46e163] [cursor=pointer]
+    - generic [ref=f46e164]:
+      - generic [ref=f46e165]: Style
+      - button "Streets" [ref=f46e166] [cursor=pointer]
+      - button "Dark" [ref=f46e167] [cursor=pointer]
+    - generic [ref=f46e168]: Events

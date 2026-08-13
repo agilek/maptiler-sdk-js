@@ -226,6 +226,7 @@ export class RoutingController extends maplibregl.Evented {
     if (this.options.profile === profile) return this;
 
     this.options.profile = profile;
+    this.fireEvent("routingconfig", { change: "profile" });
     return this.invalidate();
   }
 
@@ -247,6 +248,7 @@ export class RoutingController extends maplibregl.Evented {
    */
   setProfileOptions<P extends RoutingProfile>(options: ProfileOptionsFor<P>): this {
     this.options.profileOptions = options;
+    this.fireEvent("routingconfig", { change: "profileOptions" });
     return this.invalidate();
   }
 
@@ -259,18 +261,25 @@ export class RoutingController extends maplibregl.Evented {
   setUnits(units: RoutingUnits): this {
     if (this.options.units === units) return this;
     this.options.units = units;
+    this.fireEvent("routingconfig", { change: "units" });
     return this.invalidate();
   }
 
   /** Sets the local departure time as `YYYY-MM-DDTHH:mm`, or clears it with `null`. */
   setDepartureTime(time: string | null): this {
-    this.options.departureTime = time ?? undefined;
+    const next = time ?? undefined;
+    if (this.options.departureTime === next) return this;
+    this.options.departureTime = next;
+    this.fireEvent("routingconfig", { change: "departureTime" });
     return this.invalidate();
   }
 
   /** Sets the local arrival time as `YYYY-MM-DDTHH:mm`, or clears it with `null`. */
   setArrivalTime(time: string | null): this {
-    this.options.arrivalTime = time ?? undefined;
+    const next = time ?? undefined;
+    if (this.options.arrivalTime === next) return this;
+    this.options.arrivalTime = next;
+    this.fireEvent("routingconfig", { change: "arrivalTime" });
     return this.invalidate();
   }
 
@@ -279,6 +288,7 @@ export class RoutingController extends maplibregl.Evented {
     const next = Math.max(0, Math.floor(count));
     if (this.options.alternates === next) return this;
     this.options.alternates = next;
+    this.fireEvent("routingconfig", { change: "alternates" });
     return this.invalidate();
   }
 

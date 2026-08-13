@@ -135,6 +135,7 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
     // the session may already hold results — it outlives any single control,
     // so the panel starts from what is there rather than from an empty state
     resultsView.setStatus(this.initialStatus());
+    this.alignProfileWithModes();
 
     this.root = this.buildShell([filtersView.element, waypointsView.element, resultsView.element]);
     this.applyTheme();
@@ -242,6 +243,24 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
     }
   }
 
+  /**
+   * Moves the session onto a profile this panel offers.
+   *
+   * The session outlives any single control, so it can arrive on a profile
+   * this panel's `modes` do not include — after the modes were narrowed, say.
+   * Without this the switcher would show nothing selected while the session
+   * kept routing with the hidden profile.
+   */
+  private alignProfileWithModes(): void {
+    const modes = this.options.modes;
+    if (modes.length === 0) return; // an empty list pins the profile deliberately
+
+    const current = this.routing?.getProfile();
+    if (current && modes.some((mode) => mode.id === current)) return;
+
+    this.routing?.setProfile(modes[0].id);
+  }
+
   /** Panel status implied by the session the control just attached to. */
   private initialStatus(): RoutingPanelStatus {
     const routing = this.routing;
@@ -332,6 +351,12 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
       this.queue?.schedule(REGION.RESULTS);
     };
     const onSelect = () => this.queue?.schedule(REGION.RESULTS);
+    const onConfig = () => {
+      // the profile decides which filters apply and which tab is selected, and
+      // the units change every distance already on screen
+      this.queue?.schedule(REGION.FILTERS);
+      this.queue?.schedule(REGION.RESULTS);
+    };
     const onError = (event: { error: Error }) => {
       this.resultsView?.setStatus("error", event.error);
       this.queue?.schedule(REGION.RESULTS);
@@ -345,6 +370,7 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
     routing.on("routingstart", onStart);
     routing.on("routingroutes", onRoutes);
     routing.on("routingselect", onSelect);
+    routing.on("routingconfig", onConfig);
     routing.on("routingerror", onError);
     routing.on("routingclear", onClear);
 
@@ -353,6 +379,7 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
       routing.off("routingstart", onStart);
       routing.off("routingroutes", onRoutes);
       routing.off("routingselect", onSelect);
+      routing.off("routingconfig", onConfig);
       routing.off("routingerror", onError);
       routing.off("routingclear", onClear);
     });

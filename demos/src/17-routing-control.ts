@@ -1,4 +1,4 @@
-import { Map, MapStyle, MaptilerRoutingControl, config, type MaptilerRoutingControlOptions } from "../../src/index";
+import { Map, MapStyle, MaptilerRoutingControl, config, type MaptilerRoutingControlOptions, type RoutingProfile } from "../../src/index";
 import { setupMapTilerApiKey } from "./demo-utils";
 
 setupMapTilerApiKey({ config });
@@ -59,12 +59,24 @@ function wireEvents(instance: MaptilerRoutingControl) {
 
 //#region Option showcase
 
+/** Rebuilds `modes` from the ticked checkboxes, in the order they appear. */
+function applyCheckedModes() {
+  const checked = [...document.querySelectorAll<HTMLInputElement>(".mode-toggle:checked")].map((input) => input.value as RoutingProfile);
+  // an empty list hides the switcher entirely — names and all
+  apply({ modes: checked });
+}
+
+document.querySelectorAll<HTMLInputElement>(".mode-toggle").forEach((input) => {
+  input.addEventListener("change", applyCheckedModes);
+});
+
+document.getElementById("opt-mode-labels")!.addEventListener("change", (event) => {
+  apply({ showModeLabels: (event.target as HTMLInputElement).checked });
+});
+
 document.querySelectorAll<HTMLButtonElement>("[data-modes]").forEach((button) => {
   button.addEventListener("click", () => {
-    const value = button.dataset.modes;
-    if (value === "all") apply({ modes: undefined });
-    else if (value === "car,bicycle") apply({ modes: ["car", "bicycle"] });
-    else apply({ modes: [{ id: "car", label: "Drive", className: "demo-drive" }] });
+    apply({ modes: [{ id: "car", label: "Drive" }] });
   });
 });
 

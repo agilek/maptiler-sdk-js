@@ -101,9 +101,13 @@
 
     <div class="group">
       <span class="label">Transport modes</span>
-      <button data-modes="all">All four</button>
-      <button data-modes="car,bicycle">Car + bike</button>
-      <button data-modes="custom">Relabelled car</button>
+      <label class="check"><input type="checkbox" class="mode-toggle" value="car" checked> Car</label>
+      <label class="check"><input type="checkbox" class="mode-toggle" value="truck" checked> Truck</label>
+      <label class="check"><input type="checkbox" class="mode-toggle" value="bicycle" checked> Bike</label>
+      <label class="check"><input type="checkbox" class="mode-toggle" value="pedestrian" checked> Walk</label>
+      <label class="check"><input type="checkbox" id="opt-mode-labels" checked> Show mode names</label>
+      <p class="hint">Untick every mode to hide the switcher completely. Untick "show mode names" for icon-only tabs.</p>
+      <button data-modes="relabelled">Relabelled car only</button>
     </div>
 
     <div class="group">
