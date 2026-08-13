@@ -278,7 +278,7 @@
   color: var(--maptiler-routing-text-color);
 }
 
-.maptiler-routing .maptiler-routing-launcher:hover {
+.maptiler-routing button.maptiler-routing-launcher:hover {
   background: var(--maptiler-routing-surface-alt);
 }
 
@@ -350,9 +350,9 @@
   color: var(--maptiler-routing-muted-color);
 }
 
-.maptiler-routing-waypoint-remove:hover:not(:disabled),
-.maptiler-routing-route-detail:hover,
-.maptiler-routing-detail-back:hover {
+.maptiler-routing button.maptiler-routing-waypoint-remove:hover:not(:disabled),
+.maptiler-routing button.maptiler-routing-route-detail:hover,
+.maptiler-routing button.maptiler-routing-detail-back:hover {
   background: var(--maptiler-routing-surface-alt);
   color: var(--maptiler-routing-text-color);
 }
@@ -401,7 +401,7 @@
   height: 20px;
 }
 
-.maptiler-routing-mode:hover {
+.maptiler-routing button.maptiler-routing-mode:hover {
   background: var(--maptiler-routing-surface-hover);
 }
 
@@ -529,8 +529,8 @@
   color: var(--maptiler-routing-accent);
 }
 
-.maptiler-routing-add-stop:hover:not(:disabled),
-.maptiler-routing-pick-on-map:hover {
+.maptiler-routing button.maptiler-routing-add-stop:hover:not(:disabled),
+.maptiler-routing button.maptiler-routing-pick-on-map:hover {
   background: var(--maptiler-routing-surface-alt);
 }
 
@@ -726,7 +726,7 @@
   border-bottom: 1px solid var(--maptiler-routing-border-color);
 }
 
-.maptiler-routing-step:hover {
+.maptiler-routing button.maptiler-routing-step:hover {
   background: var(--maptiler-routing-surface-alt);
 }
 
