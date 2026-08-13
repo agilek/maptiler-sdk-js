@@ -2150,7 +2150,7 @@ A dark panel, copy-pasteable:
 
 The class names are part of the public API: `maptiler-routing`, `-header`, `-body`, `-modes`,
 `-mode`, `-waypoints`, `-waypoint`, `-waypoint-field`, `-waypoint-input`, `-suggestions`,
-`-suggestion`, `-actions`, `-add-stop`, `-pick-on-map`, `-filters`, `-dropdown`, `-dropdown-toggle`,
+`-suggestion`, `-actions`, `-add-stop`, `-filters`, `-dropdown`, `-dropdown-toggle`,
 `-dropdown-menu`, `-dropdown-row`, `-status`, `-error`, `-skeleton`, `-skeleton-card`, `-routes`,
 `-route-card`, `-route-duration`, `-route-meta`, `-route-detail`, `-steps`, `-step`
 and `-icon`. `unstyled: true` drops the root class, so nothing the SDK ships applies and the DOM is

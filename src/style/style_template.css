@@ -350,16 +350,26 @@
 .maptiler-routing-waypoint-remove,
 .maptiler-routing-waypoint-handle,
 .maptiler-routing-detail-back {
-  /* the SDK's own control button metrics, so the panel's icon buttons read as
-     the same family as the zoom and compass buttons */
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 33px;
-  height: 33px;
   flex: none;
-  border-radius: 3px;
+  border-radius: var(--maptiler-routing-radius-small);
   color: var(--maptiler-routing-muted-color);
+}
+
+/* Inputs: a 24px handle and a 32px delete button, 10px from the field. The
+   add-stop row below indents by the first of those two so it lines up with
+   the fields rather than with the handles. */
+.maptiler-routing-waypoint-handle {
+  width: 24px;
+  height: 24px;
+}
+
+.maptiler-routing-waypoint-remove,
+.maptiler-routing-detail-back {
+  width: 32px;
+  height: 32px;
 }
 
 .maptiler-routing button.maptiler-routing-waypoint-remove:hover:not(:disabled),
@@ -439,8 +449,8 @@
 .maptiler-routing-waypoint {
   display: flex;
   align-items: center;
-  gap: 2px;
-  margin-bottom: 6px;
+  gap: 10px;
+  margin-bottom: var(--maptiler-routing-gap);
   position: relative;
 }
 
@@ -590,37 +600,39 @@
 .maptiler-routing-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  /* lines up with the fields, not with the drag handles: the width of a
+     handle plus the row's gap */
+  padding-left: 34px;
   margin-bottom: var(--maptiler-routing-gap);
 }
 
+/* Inputs, add-stop row: a bordered pill rather than a bare link, 32px tall
+   with the accent label. */
 .maptiler-routing-add-stop {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px;
-  border-radius: var(--maptiler-routing-radius-small);
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--maptiler-routing-border-color);
+  border-radius: 8px;
   color: var(--maptiler-routing-accent);
+  font-size: 14px;
 }
 
-.maptiler-routing button.maptiler-routing-add-stop:hover:not(:disabled),
-.maptiler-routing button.maptiler-routing-pick-on-map:hover {
-  background: var(--maptiler-routing-surface-alt);
+.maptiler-routing-add-stop .maptiler-routing-icon {
+  /* the glyph is a filled disc with the plus punched out of it, so it takes
+     the accent from the mask's colour and shows the pill through the cross */
+  width: 14px;
+  height: 14px;
 }
 
-.maptiler-routing-pick-on-map {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 33px;
-  height: 33px;
-  border-radius: 3px;
+.maptiler-routing button.maptiler-routing-add-stop:hover:not(:disabled) {
+  background: var(--maptiler-routing-field-hover);
+}
+
+.maptiler-routing button.maptiler-routing-add-stop:disabled {
   color: var(--maptiler-routing-muted-color);
-}
-
-.maptiler-routing-pick-on-map[aria-pressed="true"] {
-  background: var(--maptiler-routing-accent);
-  color: var(--maptiler-routing-accent-contrast);
 }
 
 /* Filters */
@@ -669,16 +681,18 @@
   border-color: var(--maptiler-routing-accent);
 }
 
+/* The menu: the same bordered white card as the pill, opening under it. The
+   design gives it no shadow — the border is what separates it from the map. */
 .maptiler-routing-dropdown-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
+  /* against the viewport, not the pill: the panel body scrolls, and an
+     absolutely positioned menu would be clipped by it. The control sets the
+     coordinates when it opens. */
+  position: fixed;
   z-index: 3;
-  min-width: 100%;
-  padding: 8px;
-  border-radius: 6px;
+  padding: 0 1px;
+  border: 1px solid var(--maptiler-routing-border-color);
+  border-radius: 8px;
   background: var(--maptiler-routing-surface);
-  box-shadow: var(--maptiler-routing-shadow);
   white-space: nowrap;
 }
 
@@ -686,10 +700,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  min-height: 32px;
-  padding: 0 4px;
-  border-radius: var(--maptiler-routing-radius-small);
+  gap: 10px;
+  height: 42px;
+  padding: 8px 11px;
   font-size: 14px;
   cursor: pointer;
 }
@@ -698,14 +711,80 @@
   background: var(--maptiler-routing-surface-alt);
 }
 
+.maptiler-routing-dropdown-row[data-selected] {
+  color: var(--maptiler-routing-accent);
+}
+
+/* The right-hand side of a row is the value and its unit, both muted and
+   without a box — an entry field that reads as text until it is used. */
+.maptiler-routing-dropdown-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--maptiler-routing-muted-color);
+}
+
 .maptiler-routing-dropdown-number {
-  width: 96px;
-  padding: 4px 6px;
-  border: 1px solid var(--maptiler-routing-border-color);
-  border-radius: var(--maptiler-routing-radius-small);
-  background: var(--maptiler-routing-surface);
+  width: 52px;
+  padding: 0;
+  border: none;
+  background: none;
   color: inherit;
   font: inherit;
+  text-align: right;
+}
+
+.maptiler-routing-dropdown-date {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--maptiler-routing-muted-color);
+  font: inherit;
+}
+
+.maptiler-routing-dropdown-note {
+  max-width: 200px;
+  margin: 0;
+  padding: 0 11px 12px;
+  color: var(--maptiler-routing-muted-color);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: normal;
+}
+
+/* Switch: the design's 32×16 toggle, drawn from a checkbox so it stays a
+   checkbox for the keyboard and for assistive technology. */
+.maptiler-routing-switch {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 32px;
+  height: 16px;
+  margin: 0;
+  border-radius: 16px;
+  background: var(--maptiler-routing-border-color);
+  cursor: pointer;
+  transition: background var(--maptiler-routing-transition-duration) ease;
+}
+
+.maptiler-routing-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--maptiler-routing-surface);
+  transition: transform var(--maptiler-routing-transition-duration) ease;
+}
+
+.maptiler-routing-switch:checked {
+  background: var(--maptiler-routing-accent);
+}
+
+.maptiler-routing-switch:checked::after {
+  transform: translateX(16px);
 }
 
 /* Status */
@@ -1016,6 +1095,11 @@
 }
 
 /* ── Icon masks — generated from src/style/svg/routing-*.svg ── */
+.maptiler-routing-icon[data-icon="add-stop"] {
+  -webkit-mask-image: url([src/style/svg/routing-add-stop.svg]);
+  mask-image: url([src/style/svg/routing-add-stop.svg]);
+}
+
 .maptiler-routing-icon[data-icon="chevron-down"] {
   -webkit-mask-image: url([src/style/svg/routing-chevron-down.svg]);
   mask-image: url([src/style/svg/routing-chevron-down.svg]);

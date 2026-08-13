@@ -1,12 +1,21 @@
 import { supportsAvoidances, supportsBicycleType, supportsRouteMode, supportsTravelSpeed, supportsVehicleOptions } from "../routing-constants";
 import type { BicycleRouteType, CarRouteMode, RoutingAvoidances, RoutingProfile, RoutingUnits } from "../types";
-import { Dropdown, menuRow, numberField } from "./routing-dropdown";
+import { Dropdown, choiceRow, menuNote, menuRow, numberField, switchField } from "./routing-dropdown";
 import type { RoutingPanelContext } from "./routing-ui-context";
 import { PROFILE_ICONS, RC } from "./routing-ui-defaults";
 import { el, icon, setBooleanAttribute } from "./routing-ui-dom";
 
-/** Vehicle dimensions the truck menu offers, in the design's order. */
-const VEHICLE_FIELDS = ["weight", "height", "length", "axleLoad"] as const;
+/**
+ * Vehicle fields the truck menu offers, in the design's order, each with the
+ * unit it is expressed in and the step its entry moves by.
+ */
+const VEHICLE_FIELDS = [
+  { id: "height", unit: "m", step: 0.1 },
+  { id: "length", unit: "m", step: 0.1 },
+  { id: "weight", unit: "t", step: 0.1 },
+  { id: "axleLoad", unit: "t", step: 0.1 },
+  { id: "topSpeed", unit: "km/h", step: 1 },
+] as const;
 
 /** Bicycle sub-types the bicycle menu offers, in the design's order. */
 const BICYCLE_TYPES: readonly BicycleRouteType[] = ["road", "gravel", "mountain", "city"];
@@ -72,7 +81,7 @@ export class FiltersView {
   /** Avoidances are held here because the API only receives the ones switched on. */
   private avoidances: RoutingAvoidances = {};
   private routeMode: CarRouteMode = "fastest";
-  private vehicle: { weight?: number; height?: number; length?: number; axleLoad?: number; hazmat?: boolean } = {};
+  private vehicle: { weight?: number; height?: number; length?: number; axleLoad?: number; topSpeed?: number; hazmat?: boolean } = {};
   private bicycleType: BicycleRouteType | undefined = undefined;
   private travelSpeed: number | undefined = undefined;
 
@@ -279,7 +288,7 @@ export class FiltersView {
         onPick(value);
       });
 
-      dropdown.menu.append(menuRow(labelOf(value), radio));
+      dropdown.menu.append(choiceRow(labelOf(value), radio, isSelected(value)));
     }
 
     return dropdown.element;
@@ -312,7 +321,7 @@ export class FiltersView {
     const { labels } = this.context.options;
     const dropdown = this.createDropdown("departure", labels.departNow, labels.departure);
 
-    const input = el("input", RC.dropdownNumber);
+    const input = el("input", RC.dropdownDate);
     input.type = "datetime-local";
     input.setAttribute("aria-label", labels.departure);
 
@@ -343,16 +352,12 @@ export class FiltersView {
     const dropdown = this.createDropdown("avoidances", labels.avoid, labels.avoid);
 
     for (const id of avoidances) {
-      const checkbox = el("input");
-      checkbox.type = "checkbox";
-      checkbox.checked = this.avoidances[id] === true;
-
-      checkbox.addEventListener("change", () => {
-        this.avoidances = { ...this.avoidances, [id]: checkbox.checked };
+      const toggle = switchField(this.avoidances[id] === true, (checked) => {
+        this.avoidances = { ...this.avoidances, [id]: checked };
         this.pushProfileOptions();
       });
 
-      dropdown.menu.append(menuRow(labels.avoidances[id] ?? id, checkbox));
+      dropdown.menu.append(menuRow(labels.avoidances[id] ?? id, toggle));
     }
 
     return dropdown.element;
@@ -364,19 +369,16 @@ export class FiltersView {
     const dropdown = this.createDropdown("vehicle", labels.vehicle, labels.vehicle);
 
     for (const field of VEHICLE_FIELDS) {
-      const input = numberField(this.vehicle[field], 0, 0.1, (value) => {
-        this.vehicle = { ...this.vehicle, [field]: value };
+      const input = numberField(this.vehicle[field.id], field.unit, 0, field.step, (value) => {
+        this.vehicle = { ...this.vehicle, [field.id]: value };
         this.pushProfileOptions();
       });
 
-      dropdown.menu.append(menuRow(labels.vehicleFields[field] ?? field, input));
+      dropdown.menu.append(menuRow(labels.vehicleFields[field.id] ?? field.id, input));
     }
 
-    const hazmat = el("input");
-    hazmat.type = "checkbox";
-    hazmat.checked = this.vehicle.hazmat === true;
-    hazmat.addEventListener("change", () => {
-      this.vehicle = { ...this.vehicle, hazmat: hazmat.checked };
+    const hazmat = switchField(this.vehicle.hazmat === true, (checked) => {
+      this.vehicle = { ...this.vehicle, hazmat: checked };
       this.pushProfileOptions();
     });
 
@@ -404,14 +406,16 @@ export class FiltersView {
   private buildSpeedFilter(): HTMLElement {
     const { labels } = this.context.options;
     const dropdown = this.createDropdown("speed", labels.speed, labels.speed);
+    const rowLabel = this.context.routing.getProfile() === "bicycle" ? labels.cyclingSpeed : labels.walkingSpeed;
 
-    const input = numberField(this.travelSpeed, 1, 1, (value) => {
+    const input = numberField(this.travelSpeed, labels.speedUnit, 1, 1, (value) => {
       this.travelSpeed = value;
       dropdown.setLabel(value === undefined ? labels.speed : `${value.toString()} ${labels.speedUnit}`);
       this.pushProfileOptions();
     });
 
-    dropdown.menu.append(menuRow(labels.speedUnit, input));
+    // the design spells out what the number does and does not affect
+    dropdown.menu.append(menuRow(rowLabel, input), menuNote(labels.speedHint));
     return dropdown.element;
   }
 

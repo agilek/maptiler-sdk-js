@@ -32,7 +32,6 @@ export class WaypointsView {
   private readonly context: RoutingPanelContext;
   private readonly list: HTMLUListElement;
   private readonly addStopButton: HTMLButtonElement;
-  private readonly pickButton?: HTMLButtonElement;
   private readonly rows = new Map<string, WaypointRow>();
 
   /** Set while a row is being dragged, so the drop target can be resolved. */
@@ -40,7 +39,7 @@ export class WaypointsView {
 
   constructor(context: RoutingPanelContext) {
     this.context = context;
-    const { labels, clickToAddWaypoint } = context.options;
+    const { labels } = context.options;
 
     this.element = el("div");
     this.list = el("ul", RC.waypoints);
@@ -48,21 +47,16 @@ export class WaypointsView {
 
     const actions = el("div", RC.actions);
     this.addStopButton = button(RC.addStop, labels.addStop);
-    this.addStopButton.prepend(icon("plus"));
+    this.addStopButton.prepend(icon("add-stop"));
     this.addStopButton.addEventListener("click", () => {
       this.addStop();
     });
     actions.append(this.addStopButton);
 
-    // "off" means the application owns map clicks entirely, so the affordance
-    // that arms them would be misleading
-    if (clickToAddWaypoint !== "off") {
-      this.pickButton = button(RC.pickOnMap, labels.pickOnMap, "my-location");
-      this.pickButton.addEventListener("click", () => {
-        context.control.togglePickOnMap();
-      });
-      actions.append(this.pickButton);
-    }
+    // The design's row holds this one button. Picking a point off the map is
+    // reached from inside a field instead — its "Select from map" row, or a
+    // right-click on the map — where it is attached to the field it fills
+    // rather than being an unlabelled toggle with no visible armed state.
 
     this.element.append(this.list, actions);
   }
@@ -107,12 +101,6 @@ export class WaypointsView {
     const clear = row.element.querySelector<HTMLButtonElement>(`.${RC.waypointClear}`);
     if (!clear) return;
     clear.hidden = row.input.value.trim() === "";
-  }
-
-  /** Reflects the armed state of the "add from map" toggle. */
-  setPicking(picking: boolean): void {
-    if (!this.pickButton) return;
-    setBooleanAttribute(this.pickButton, "aria-pressed", picking);
   }
 
   /** Builds, or updates, the row for one waypoint. */

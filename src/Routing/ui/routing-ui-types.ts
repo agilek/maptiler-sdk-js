@@ -49,7 +49,7 @@ export const RoutingClickToAdd = {
   /** Never. Map clicks are left entirely to the application. */
   OFF: "off",
   /**
-   * Only while the user has pressed the "Add stop from map" button. The
+   * Only after the user chose "Select from map" in a waypoint field. The
    * default, because it never consumes a click the application expected.
    */
   ARMED: "armed",
@@ -117,10 +117,6 @@ export type RoutingControlLabels = {
   removeStop?: string;
   /** Accessible name of a row's reorder handle. */
   reorderStop?: string;
-  /** The "Add stop from map" toggle. */
-  pickOnMap?: string;
-  /** Hint shown while the map is armed for picking. */
-  pickOnMapHint?: string;
   /** Heading above the route list. */
   routes?: string;
   /** Heading shown while a new request is in flight and stale results are still visible. */
@@ -160,7 +156,7 @@ export type RoutingControlLabels = {
   /** Closed-state label of the vehicle menu. */
   vehicle?: string;
   /** Labels of the vehicle fields, all in metric units. */
-  vehicleFields?: Partial<Record<"weight" | "height" | "length" | "axleLoad" | "hazmat", string>>;
+  vehicleFields?: Partial<Record<"weight" | "height" | "length" | "axleLoad" | "topSpeed" | "hazmat", string>>;
   /** Closed-state label of the bicycle type menu. */
   bicycleType?: string;
   /** Per-bicycle-type labels. */
@@ -169,6 +165,12 @@ export type RoutingControlLabels = {
   speed?: string;
   /** Unit suffix of the speed field. */
   speedUnit?: string;
+  /** Row label of the speed menu on the bicycle profile. */
+  cyclingSpeed?: string;
+  /** Row label of the speed menu on foot. */
+  walkingSpeed?: string;
+  /** The note under the speed field, saying what the number does. */
+  speedHint?: string;
 };
 
 /**

@@ -741,7 +741,6 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
       }
     }
 
-    this.waypointsView?.setPicking(picking);
     if (this.root) setDataFlag(this.root, "picking", picking);
     this.fire(picking ? "routinguipickstart" : "routinguipickend", {});
   }

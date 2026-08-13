@@ -50,7 +50,6 @@ export const RC = Object.freeze({
 
   actions: "maptiler-routing-actions",
   addStop: "maptiler-routing-add-stop",
-  pickOnMap: "maptiler-routing-pick-on-map",
 
   filters: "maptiler-routing-filters",
   dropdown: "maptiler-routing-dropdown",
@@ -58,7 +57,12 @@ export const RC = Object.freeze({
   dropdownLabel: "maptiler-routing-dropdown-label",
   dropdownMenu: "maptiler-routing-dropdown-menu",
   dropdownRow: "maptiler-routing-dropdown-row",
+  dropdownRowLabel: "maptiler-routing-dropdown-row-label",
+  dropdownValue: "maptiler-routing-dropdown-value",
   dropdownNumber: "maptiler-routing-dropdown-number",
+  dropdownDate: "maptiler-routing-dropdown-date",
+  dropdownNote: "maptiler-routing-dropdown-note",
+  switch: "maptiler-routing-switch",
 
   status: "maptiler-routing-status",
   error: "maptiler-routing-error",
@@ -225,8 +229,6 @@ export const DEFAULT_LABELS: Required<RoutingControlLabels> = Object.freeze({
   locating: "Locating…",
   removeStop: "Remove this stop",
   reorderStop: "Reorder this stop",
-  pickOnMap: "Add a stop from the map",
-  pickOnMapHint: "Click the map to add a stop. Press Escape to cancel.",
   routes: "Routes",
   recalculating: "Recalculating…",
   loading: "Calculating the route…",
@@ -241,16 +243,19 @@ export const DEFAULT_LABELS: Required<RoutingControlLabels> = Object.freeze({
   modes: { car: "Car", truck: "Truck", bicycle: "Bike", pedestrian: "Walk" },
   units: "Distance units",
   avoid: "Avoid",
-  avoidances: { tolls: "Tolls", highway: "Motorways", ferry: "Ferries" },
+  avoidances: { tolls: "Tolls", highway: "Highways", ferry: "Ferries" },
   routeModes: { fastest: "Fastest", shortest: "Shortest", balanced: "Balanced" },
   departure: "Departure",
   departNow: "Now",
   vehicle: "Truck options",
-  vehicleFields: { weight: "Weight (t)", height: "Height (m)", length: "Length (m)", axleLoad: "Axle load (t)", hazmat: "Hazardous goods" },
+  vehicleFields: { height: "Height", length: "Length", weight: "Weight", axleLoad: "Axle load", topSpeed: "Max speed", hazmat: "Hazardous materials" },
   bicycleType: "Bicycle",
   bicycleTypes: { road: "Road bike", gravel: "Gravel bike", mountain: "Mountain bike", city: "City bike" },
   speed: "Speed",
   speedUnit: "km/h",
+  cyclingSpeed: "Cycling speed",
+  walkingSpeed: "Walking speed",
+  speedHint: "Your average speed is used for time estimates and doesn’t affect route selection.",
 });
 
 /** Built-in formatters. */
