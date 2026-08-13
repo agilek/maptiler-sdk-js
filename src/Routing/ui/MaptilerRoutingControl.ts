@@ -171,6 +171,10 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
     const container = this.root?.parentElement;
     if (container) container.style.marginRight = "";
 
+    // the filter menus listen on the document, which the panel's removal would
+    // otherwise leave behind
+    this.filtersView?.destroy();
+
     if (this.root) DOMremove(this.root);
 
     this.root = undefined;
@@ -421,7 +425,10 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
       if (this.options.clickToAddWaypoint === "armed") this.setPicking(false);
     };
 
-    const onMoveStart = () => this.waypointsView?.closeAllSuggestions();
+    const onMoveStart = () => {
+      this.waypointsView?.closeAllSuggestions();
+      this.filtersView?.closeMenus();
+    };
 
     /**
      * Right-click fills a waypoint straight away: the gesture is unambiguous,

@@ -53,15 +53,17 @@ export const RC = Object.freeze({
   pickOnMap: "maptiler-routing-pick-on-map",
 
   filters: "maptiler-routing-filters",
-  filter: "maptiler-routing-filter",
-  filterLabel: "maptiler-routing-filter-label",
-  select: "maptiler-routing-select",
-  switchRow: "maptiler-routing-switch-row",
-  units: "maptiler-routing-units",
-  unit: "maptiler-routing-unit",
+  dropdown: "maptiler-routing-dropdown",
+  dropdownToggle: "maptiler-routing-dropdown-toggle",
+  dropdownLabel: "maptiler-routing-dropdown-label",
+  dropdownMenu: "maptiler-routing-dropdown-menu",
+  dropdownRow: "maptiler-routing-dropdown-row",
+  dropdownNumber: "maptiler-routing-dropdown-number",
 
   status: "maptiler-routing-status",
   error: "maptiler-routing-error",
+  skeleton: "maptiler-routing-skeleton",
+  skeletonCard: "maptiler-routing-skeleton-card",
 
   routesHeader: "maptiler-routing-routes-header",
   routes: "maptiler-routing-routes",
@@ -69,6 +71,7 @@ export const RC = Object.freeze({
   routeBody: "maptiler-routing-route-body",
   routeDuration: "maptiler-routing-route-duration",
   routeMeta: "maptiler-routing-route-meta",
+  routeMetaItem: "maptiler-routing-route-meta-item",
   routeDescription: "maptiler-routing-route-description",
   routeDetail: "maptiler-routing-route-detail",
 
@@ -106,7 +109,10 @@ export const CSS_VARS: Readonly<Record<keyof RoutingControlTheme, string>> = Obj
   mutedColor: "--maptiler-routing-muted-color",
   borderColor: "--maptiler-routing-border-color",
   fieldHover: "--maptiler-routing-field-hover",
+  pinColor: "--maptiler-routing-pin-color",
   dangerColor: "--maptiler-routing-danger-color",
+  skeletonColor: "--maptiler-routing-skeleton-color",
+  skeletonHighlight: "--maptiler-routing-skeleton-highlight",
   radius: "--maptiler-routing-radius",
   radiusSmall: "--maptiler-routing-radius-small",
   width: "--maptiler-routing-width",
@@ -178,8 +184,17 @@ export function maneuverIconId(type?: ManeuverType): string {
 /** Transport tabs shown when the consumer does not choose. */
 export const DEFAULT_MODES: readonly RoutingProfile[] = ["car", "truck", "bicycle", "pedestrian"];
 
-/** Filter sections shown when the consumer does not choose. */
-export const DEFAULT_FILTERS: readonly RoutingFilter[] = ["mode", "departure", "avoidances", "units"];
+/**
+ * Filter sections shown when the consumer does not choose.
+ *
+ * Every profile takes what applies to it out of this one list, which is what
+ * gives each transport mode its own row: the car keeps the route preference and
+ * the avoidances, the truck swaps the preference for the vehicle menu, and the
+ * bicycle and the pedestrian get a speed instead of either. The order is the
+ * design's (RouteFilters), with the units toggle — which the design does not
+ * draw — last.
+ */
+export const DEFAULT_FILTERS: readonly RoutingFilter[] = ["mode", "departure", "vehicle", "bicycleType", "speed", "avoidances", "units"];
 
 /** Avoidance switches offered when the consumer does not choose. */
 export const DEFAULT_AVOIDANCES: readonly RoutingAvoidanceId[] = ["tolls", "highway", "ferry"];
@@ -229,7 +244,13 @@ export const DEFAULT_LABELS: Required<RoutingControlLabels> = Object.freeze({
   avoidances: { tolls: "Tolls", highway: "Motorways", ferry: "Ferries" },
   routeModes: { fastest: "Fastest", shortest: "Shortest", balanced: "Balanced" },
   departure: "Departure",
-  departNow: "Leave now",
+  departNow: "Now",
+  vehicle: "Truck options",
+  vehicleFields: { weight: "Weight (t)", height: "Height (m)", length: "Length (m)", axleLoad: "Axle load (t)", hazmat: "Hazardous goods" },
+  bicycleType: "Bicycle",
+  bicycleTypes: { road: "Road bike", gravel: "Gravel bike", mountain: "Mountain bike", city: "City bike" },
+  speed: "Speed",
+  speedUnit: "km/h",
 });
 
 /** Built-in formatters. */
@@ -279,7 +300,10 @@ export type ResolvedControlOptions = {
   profile?: RoutingProfile;
   filters: readonly RoutingFilter[];
   avoidances: readonly RoutingAvoidanceId[];
-  units?: import("../types").RoutingUnits;
+  /** The unit the session starts in, already resolved to a concrete one. */
+  units: import("../types").RoutingUnits;
+  /** Whether the end user may change it. */
+  unitsSwitchable: boolean;
   language?: string;
   alternates: number;
   maxWaypoints: number;
@@ -298,6 +322,26 @@ export type ResolvedControlOptions = {
   renderers: RoutingControlRenderers;
   onCreate?: (root: HTMLElement, control: never) => void;
 };
+
+/** Locales whose regions measure road distances in miles. */
+const IMPERIAL_REGIONS = new Set(["US", "GB", "LR", "MM"]);
+
+/**
+ * Picks a distance unit from the environment, for `units: "auto"`.
+ *
+ * The SDK's own `config.unit` wins when the developer has set it — that is an
+ * explicit decision about the whole map. Failing that the region of the
+ * browser's locale decides, which is the closest thing to "the user's
+ * settings" a page can read.
+ */
+function detectUnits(): import("../types").RoutingUnits {
+  if (config.unit === "imperial") return "mi";
+  if (config.unit === "metric") return "km";
+
+  const locale = typeof navigator === "undefined" ? undefined : navigator.language;
+  const region = locale ? new Intl.Locale(locale).maximize().region : undefined;
+  return region !== undefined && IMPERIAL_REGIONS.has(region) ? "mi" : "km";
+}
 
 /**
  * Applies the defaults to a set of control options.
@@ -325,7 +369,8 @@ export function resolveControlOptions(options: MaptilerRoutingControlOptions = {
     profile: options.profile,
     filters: options.filters ?? DEFAULT_FILTERS,
     avoidances: options.avoidances ?? DEFAULT_AVOIDANCES,
-    units: options.units ?? (config.unit === "imperial" ? "mi" : "km"),
+    units: options.units === "km" || options.units === "mi" ? options.units : detectUnits(),
+    unitsSwitchable: options.units === "shown",
     language: options.language,
     alternates: options.alternates ?? 2,
     maxWaypoints: options.maxWaypoints ?? DEFAULT_MAX_WAYPOINTS,
@@ -354,6 +399,8 @@ export function resolveControlOptions(options: MaptilerRoutingControlOptions = {
       modes: { ...DEFAULT_LABELS.modes, ...options.labels?.modes },
       avoidances: { ...DEFAULT_LABELS.avoidances, ...options.labels?.avoidances },
       routeModes: { ...DEFAULT_LABELS.routeModes, ...options.labels?.routeModes },
+      vehicleFields: { ...DEFAULT_LABELS.vehicleFields, ...options.labels?.vehicleFields },
+      bicycleTypes: { ...DEFAULT_LABELS.bicycleTypes, ...options.labels?.bicycleTypes },
     },
     formatters: { ...DEFAULT_FORMATTERS, ...options.formatters },
     theme: options.theme ?? {},

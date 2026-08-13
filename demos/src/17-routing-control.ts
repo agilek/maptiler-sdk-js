@@ -94,8 +94,16 @@ document.querySelectorAll<HTMLButtonElement>("[data-filters]").forEach((button) 
   button.addEventListener("click", () => {
     const value = button.dataset.filters;
     if (value === "all") apply({ filters: undefined });
-    else if (value === "units") apply({ filters: ["units"] });
+    else if (value === "departure") apply({ filters: ["departure"] });
     else apply({ filters: [] });
+  });
+});
+
+document.querySelectorAll<HTMLButtonElement>("[data-units]").forEach((button) => {
+  button.addEventListener("click", () => {
+    // km and mi fix the unit; "shown" is the only value that gives the end user
+    // the toggle, and "auto" reads it from the browser
+    apply({ units: button.dataset.units as MaptilerRoutingControlOptions["units"] });
   });
 });
 

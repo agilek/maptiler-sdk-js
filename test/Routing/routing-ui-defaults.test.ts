@@ -9,7 +9,9 @@ describe("maneuverIconId", () => {
     ["rightTurn", "maneuver-right"],
     ["slightLeftTurn", "maneuver-slight-left"],
     ["leftUTurn", "maneuver-uturn-left"],
-    ["destination", "maneuver-destination"],
+    // the endpoints borrow the panel's own pin icons rather than a maneuver drawing
+    ["start", "route-start"],
+    ["destination", "route-pin"],
   ])("maps %s to %s", (type, expected) => {
     expect(maneuverIconId(type)).toBe(expected);
   });
@@ -38,7 +40,7 @@ describe("resolveControlOptions", () => {
     const options = resolveControlOptions();
 
     expect(options.modes.map((mode) => mode.id)).toEqual(["car", "truck", "bicycle", "pedestrian"]);
-    expect(options.filters).toEqual(["mode", "departure", "avoidances", "units"]);
+    expect(options.filters).toEqual(["mode", "departure", "vehicle", "bicycleType", "speed", "avoidances", "units"]);
     expect(options.clickToAddWaypoint).toBe("armed");
     expect(options.launcher).toBe(true);
     expect(options.open).toBe(false);
@@ -46,6 +48,25 @@ describe("resolveControlOptions", () => {
     expect(options.search.enabled).toBe(true);
     expect(options.modeDisplay).toBe("both");
     expect(options.showSingleMode).toBe(true);
+  });
+
+  it.each(["km", "mi"] as const)("keeps %s fixed, with no toggle for the end user", (units) => {
+    const options = resolveControlOptions({ units });
+
+    expect(options.units).toBe(units);
+    expect(options.unitsSwitchable).toBe(false);
+  });
+
+  it("hands the unit to the end user only for 'shown'", () => {
+    expect(resolveControlOptions({ units: "shown" }).unitsSwitchable).toBe(true);
+    expect(resolveControlOptions({ units: "auto" }).unitsSwitchable).toBe(false);
+    expect(resolveControlOptions().unitsSwitchable).toBe(false);
+  });
+
+  it("resolves 'auto' and the default to a concrete unit", () => {
+    // whichever the environment reports, the session cannot start on "auto"
+    expect(["km", "mi"]).toContain(resolveControlOptions({ units: "auto" }).units);
+    expect(["km", "mi"]).toContain(resolveControlOptions().units);
   });
 
   it.each(["icon", "label", "both", "none"] as const)("accepts %s as the transport tab content", (modeDisplay) => {

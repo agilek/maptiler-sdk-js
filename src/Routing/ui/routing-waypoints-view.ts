@@ -139,7 +139,8 @@ export class WaypointsView {
     this.syncClearButton(row);
 
     const pin = row.element.querySelector<HTMLElement>(`.${RC.waypointPin}`);
-    if (pin) pin.dataset.icon = role === "origin" ? "route-start" : role === "destination" ? "route-pin" : "route-stop";
+    // Search: the From row carries the Circle pin, every other row the Pin one
+    if (pin) pin.dataset.icon = role === "origin" ? "pin-circle" : "pin-marker";
 
     const handle = row.element.querySelector<HTMLElement>(`.${RC.waypointHandle}`);
     if (handle) handle.hidden = !reorderWaypoints;
@@ -166,7 +167,7 @@ export class WaypointsView {
     handle.draggable = true;
 
     const field = el("div", RC.waypointField);
-    const pin = icon("route-stop");
+    const pin = icon("pin-marker");
     pin.classList.add(RC.waypointPin);
 
     const input = el("input", RC.waypointInput);
@@ -353,7 +354,8 @@ export class WaypointsView {
 
       const lines = el("span", RC.suggestionLines);
       lines.append(el("span", RC.suggestionPrimary, action.label));
-      option.append(icon(action.icon), lines, icon("chevron-right"));
+      // no trailing chevron: SearchResults carries one, hidden in every variant
+      option.append(icon(action.icon), lines);
 
       // pointerdown, so the input's blur does not tear the list down first
       option.addEventListener("pointerdown", (event) => {
@@ -427,7 +429,7 @@ export class WaypointsView {
       const primary = (feature as { text?: string }).text ?? "";
       const lines = el("span", RC.suggestionLines);
       lines.append(el("span", RC.suggestionPrimary, primary), el("span", RC.suggestionSecondary, formatters.waypointLabel(feature)));
-      option.append(icon("place-area"), lines, icon("chevron-right"));
+      option.append(icon("place-area"), lines);
 
       // pointerdown, not click: the input's blur would otherwise tear the list
       // down before a click could land on it

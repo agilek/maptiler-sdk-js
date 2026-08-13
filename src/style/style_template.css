@@ -200,15 +200,22 @@
   --maptiler-routing-font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   --maptiler-routing-font-size: 13px;
   --maptiler-routing-surface: #fff;
-  --maptiler-routing-surface-alt: #eef3ff;
-  --maptiler-routing-surface-hover: #e1eaff;
-  --maptiler-routing-text-color: #1f2937;
-  --maptiler-routing-muted-color: #6b7280;
+  /* the TransportModesSwitch rail and an unselected RouteOptions card share
+     this tint, and its hover is the same one both use */
+  --maptiler-routing-surface-alt: #f2f6ff;
+  --maptiler-routing-surface-hover: #e4ecff;
+  --maptiler-routing-text-color: #333359;
+  --maptiler-routing-muted-color: #6b7c93;
   --maptiler-routing-accent: #3174ff;
   --maptiler-routing-accent-contrast: #fff;
   --maptiler-routing-border-color: #c1cfe4;
   --maptiler-routing-field-hover: #f2f6ff;
+  /* Pin, Active=False — a tint of the accent rather than the muted grey */
+  --maptiler-routing-pin-color: #98b7ff;
   --maptiler-routing-danger-color: #d92d20;
+  /* RouteLoading: the two ends of the skeleton's shimmer */
+  --maptiler-routing-skeleton-color: #e4ecff;
+  --maptiler-routing-skeleton-highlight: #f1f5ff;
   --maptiler-routing-icon-size: 18px;
   --maptiler-routing-radius: 10px;
   --maptiler-routing-radius-small: 4px;
@@ -296,11 +303,16 @@
   box-sizing: border-box;
 }
 
-.maptiler-routing [hidden] {
+.maptiler-routing [hidden][hidden] {
   /* The `hidden` attribute is honoured by a UA-stylesheet rule, which any
      author `display` here outranks — a hidden flex row would otherwise keep
      painting its background, border and margin. This restates it as an author
-     rule so `hidden` means hidden throughout the panel. */
+     rule so `hidden` means hidden throughout the panel.
+
+     The attribute is repeated to lift this to (0,3,0): the component rules
+     below need `.maptiler-routing` in front of them to outrank MapLibre's own
+     button styling, which put them level with the single-attribute form and
+     let a later `display` win on source order alone. */
   display: none;
 }
 
@@ -337,7 +349,6 @@
 
 .maptiler-routing-waypoint-remove,
 .maptiler-routing-waypoint-handle,
-.maptiler-routing-route-detail,
 .maptiler-routing-detail-back {
   /* the SDK's own control button metrics, so the panel's icon buttons read as
      the same family as the zoom and compass buttons */
@@ -352,7 +363,6 @@
 }
 
 .maptiler-routing button.maptiler-routing-waypoint-remove:hover:not(:disabled),
-.maptiler-routing button.maptiler-routing-route-detail:hover,
 .maptiler-routing button.maptiler-routing-detail-back:hover {
   background: var(--maptiler-routing-surface-alt);
   color: var(--maptiler-routing-text-color);
@@ -361,6 +371,13 @@
 .maptiler-routing :focus-visible {
   outline: 2px solid var(--maptiler-routing-accent);
   outline-offset: 1px;
+}
+
+.maptiler-routing .maptiler-routing-waypoint-input:focus-visible {
+  /* the field around it already turns accent-bordered when focused, which is
+     the design's own focus affordance — a second ring inside it reads as two
+     nested boxes */
+  outline: none;
 }
 
 /* Transport modes */
@@ -460,10 +477,9 @@
   border-color: var(--maptiler-routing-accent);
 }
 
-.maptiler-routing-waypoint-field:has(.maptiler-routing-waypoint-clear:not([hidden])) {
-  padding-right: 12px;
-}
-
+/* The clear button sits at a fixed inset in every Search variant that has one,
+   so the field's padding must not depend on whether it is showing: a padding
+   that changes with state moves the X of one row relative to the next. */
 .maptiler-routing .maptiler-routing-waypoint-clear {
   display: inline-flex;
   align-items: center;
@@ -483,12 +499,18 @@
   height: 16px;
 }
 
+/* Pin: the From row is the "Circle" variant, every other row the "Pin" one.
+   Active is a colour change on the same shape — the muted blue by default,
+   the accent while the field is hovered or focused. */
 .maptiler-routing-waypoint-pin {
-  color: var(--maptiler-routing-muted-color);
   flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--maptiler-routing-pin-color);
 }
 
-.maptiler-routing-waypoint[data-located] .maptiler-routing-waypoint-pin {
+.maptiler-routing-waypoint-field:hover .maptiler-routing-waypoint-pin,
+.maptiler-routing-waypoint-field:focus-within .maptiler-routing-waypoint-pin {
   color: var(--maptiler-routing-accent);
 }
 
@@ -544,11 +566,6 @@
   width: 24px;
   height: 24px;
   color: var(--maptiler-routing-muted-color);
-}
-
-.maptiler-routing-suggestion > .maptiler-routing-icon:last-child {
-  width: 16px;
-  height: 16px;
 }
 
 .maptiler-routing-suggestion:hover,
@@ -618,55 +635,77 @@
   margin-bottom: var(--maptiler-routing-gap);
 }
 
-.maptiler-routing-select {
-  font: inherit;
-  color: inherit;
-  padding: 5px 8px;
-  background: var(--maptiler-routing-surface);
-  border: 1px solid var(--maptiler-routing-border-color);
-  border-radius: var(--maptiler-routing-radius-small);
+/* Dropdown: the pill of RouteFilters — 42px tall, 8px radius, bordered, with
+   the value on the left and a chevron on the right. */
+.maptiler-routing-dropdown {
+  position: relative;
 }
 
-.maptiler-routing-switch-row {
-  display: flex;
+.maptiler-routing button.maptiler-routing-dropdown-toggle {
+  display: inline-flex;
   align-items: center;
   gap: 10px;
-  margin: 0;
-  padding: 0;
-  border: none;
-}
-
-.maptiler-routing-switch-row label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--maptiler-routing-muted-color);
-}
-
-.maptiler-routing-filter-label {
-  padding: 0 4px 0 0;
-  color: var(--maptiler-routing-muted-color);
-  font-size: 12px;
-}
-
-.maptiler-routing-units {
-  display: inline-flex;
-  gap: 2px;
-  padding: 2px;
-  background: var(--maptiler-routing-surface-alt);
-  border-radius: var(--maptiler-routing-radius-small);
-}
-
-.maptiler-routing-unit {
-  padding: 3px 8px;
-  border-radius: var(--maptiler-routing-radius-small);
-  color: var(--maptiler-routing-muted-color);
-}
-
-.maptiler-routing-unit[aria-checked="true"] {
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--maptiler-routing-border-color);
+  border-radius: 8px;
   background: var(--maptiler-routing-surface);
   color: var(--maptiler-routing-text-color);
-  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.maptiler-routing button.maptiler-routing-dropdown-toggle:hover {
+  background: var(--maptiler-routing-field-hover);
+}
+
+.maptiler-routing-dropdown-toggle .maptiler-routing-icon {
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+}
+
+.maptiler-routing-dropdown-toggle[aria-expanded="true"] {
+  border-color: var(--maptiler-routing-accent);
+}
+
+.maptiler-routing-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 3;
+  min-width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--maptiler-routing-surface);
+  box-shadow: var(--maptiler-routing-shadow);
+  white-space: nowrap;
+}
+
+.maptiler-routing-dropdown-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 32px;
+  padding: 0 4px;
+  border-radius: var(--maptiler-routing-radius-small);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.maptiler-routing-dropdown-row:hover {
+  background: var(--maptiler-routing-surface-alt);
+}
+
+.maptiler-routing-dropdown-number {
+  width: 96px;
+  padding: 4px 6px;
+  border: 1px solid var(--maptiler-routing-border-color);
+  border-radius: var(--maptiler-routing-radius-small);
+  background: var(--maptiler-routing-surface);
+  color: inherit;
+  font: inherit;
 }
 
 /* Status */
@@ -676,9 +715,65 @@
   color: var(--maptiler-routing-muted-color);
 }
 
+.maptiler-routing-status[data-silent] {
+  /* the skeleton is showing in its place, but the line stays in the accessible
+     tree: it is the live region that announces what the placeholders mean */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .maptiler-routing-error {
   margin: 4px 0;
   color: var(--maptiler-routing-danger-color);
+}
+
+/* Loading skeleton */
+
+/* RouteLoading: cards the size of the real ones, filled with a gradient that
+   sweeps across them. The two variants of the component set are the two ends
+   of that sweep. */
+.maptiler-routing-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--maptiler-routing-gap);
+  margin: 4px 0;
+}
+
+.maptiler-routing-skeleton-card {
+  height: 126px;
+  border-radius: var(--maptiler-routing-radius);
+  background: linear-gradient(
+    100deg,
+    var(--maptiler-routing-skeleton-color) 0%,
+    var(--maptiler-routing-skeleton-highlight) 50%,
+    var(--maptiler-routing-skeleton-color) 100%
+  );
+  background-size: 200% 100%;
+  animation: maptiler-routing-skeleton 1.4s ease-in-out infinite;
+}
+
+@keyframes maptiler-routing-skeleton {
+  from {
+    background-position: 150% 0;
+  }
+
+  to {
+    background-position: -50% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .maptiler-routing-skeleton-card {
+    /* the placeholder still communicates "results are coming"; only the sweep
+       goes away */
+    animation: none;
+  }
 }
 
 /* Route cards */
@@ -709,23 +804,33 @@
   opacity: 0.55;
 }
 
+/* RouteOptions: a 24px-padded card, tinted when it is one of the alternates
+   and white with a 2px accent border once selected. The border is there in
+   both states, transparent when unselected, so selecting one does not shift
+   the text by a pixel. */
 .maptiler-routing-route-card {
   display: flex;
-  align-items: stretch;
-  margin-bottom: 6px;
-  border: 1px solid var(--maptiler-routing-border-color);
-  border-radius: var(--maptiler-routing-radius-small);
-  overflow: hidden;
-  transition: border-color var(--maptiler-routing-transition-duration) ease;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: var(--maptiler-routing-gap);
+  padding: 24px;
+  border: 2px solid transparent;
+  border-radius: var(--maptiler-routing-radius);
+  background: var(--maptiler-routing-surface-alt);
+  transition:
+    background var(--maptiler-routing-transition-duration) ease,
+    border-color var(--maptiler-routing-transition-duration) ease;
 }
 
 .maptiler-routing-route-card:hover {
-  background: var(--maptiler-routing-surface-alt);
+  background: var(--maptiler-routing-surface-hover);
 }
 
-.maptiler-routing-route-card[data-selected] {
+.maptiler-routing-route-card[data-selected],
+.maptiler-routing-route-card[data-selected]:hover {
   border-color: var(--maptiler-routing-accent);
-  background: var(--maptiler-routing-surface-alt);
+  background: var(--maptiler-routing-surface);
 }
 
 .maptiler-routing-route-body {
@@ -734,23 +839,61 @@
   min-width: 0;
   flex-direction: column;
   align-items: flex-start;
-  gap: 1px;
-  padding: 9px 10px;
+  gap: 8px;
   text-align: left;
 }
 
 .maptiler-routing-route-duration {
-  font-size: 15px;
+  font-size: 20px;
   font-weight: 600;
+  line-height: 27px;
 }
 
 .maptiler-routing-route-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
   color: var(--maptiler-routing-muted-color);
+  font-size: 14px;
+}
+
+.maptiler-routing-route-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.maptiler-routing-route-meta-item .maptiler-routing-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .maptiler-routing-route-description {
   color: var(--maptiler-routing-muted-color);
-  font-size: 12px;
+  font-size: 14px;
+}
+
+/* DirectionButton: a 32px square that opens the turn-by-turn view. It takes
+   the card's own background, so it reads as part of the card rather than as a
+   floating control. */
+.maptiler-routing button.maptiler-routing-route-detail {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--maptiler-routing-border-color);
+  border-radius: var(--maptiler-routing-radius-small);
+  background: inherit;
+  color: var(--maptiler-routing-muted-color);
+}
+
+.maptiler-routing button.maptiler-routing-route-detail:hover {
+  background: var(--maptiler-routing-surface);
+  color: var(--maptiler-routing-text-color);
+}
+
+.maptiler-routing-route-detail .maptiler-routing-icon {
+  width: 24px;
+  height: 24px;
 }
 
 /* Turn by turn */
@@ -873,7 +1016,6 @@
 }
 
 /* ── Icon masks — generated from src/style/svg/routing-*.svg ── */
-
 .maptiler-routing-icon[data-icon="chevron-down"] {
   -webkit-mask-image: url([src/style/svg/routing-chevron-down.svg]);
   mask-image: url([src/style/svg/routing-chevron-down.svg]);
@@ -892,6 +1034,11 @@
 .maptiler-routing-icon[data-icon="clear"] {
   -webkit-mask-image: url([src/style/svg/routing-clear.svg]);
   mask-image: url([src/style/svg/routing-clear.svg]);
+}
+
+.maptiler-routing-icon[data-icon="clock"] {
+  -webkit-mask-image: url([src/style/svg/routing-clock.svg]);
+  mask-image: url([src/style/svg/routing-clock.svg]);
 }
 
 .maptiler-routing-icon[data-icon="close"] {
@@ -982,6 +1129,21 @@
 .maptiler-routing-icon[data-icon="my-location"] {
   -webkit-mask-image: url([src/style/svg/routing-my-location.svg]);
   mask-image: url([src/style/svg/routing-my-location.svg]);
+}
+
+.maptiler-routing-icon[data-icon="path"] {
+  -webkit-mask-image: url([src/style/svg/routing-path.svg]);
+  mask-image: url([src/style/svg/routing-path.svg]);
+}
+
+.maptiler-routing-icon[data-icon="pin-circle"] {
+  -webkit-mask-image: url([src/style/svg/routing-pin-circle.svg]);
+  mask-image: url([src/style/svg/routing-pin-circle.svg]);
+}
+
+.maptiler-routing-icon[data-icon="pin-marker"] {
+  -webkit-mask-image: url([src/style/svg/routing-pin-marker.svg]);
+  mask-image: url([src/style/svg/routing-pin-marker.svg]);
 }
 
 .maptiler-routing-icon[data-icon="place-area"] {

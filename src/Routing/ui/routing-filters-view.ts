@@ -1,8 +1,18 @@
-import { supportsAvoidances, supportsRouteMode } from "../routing-constants";
-import type { CarRouteMode, RoutingAvoidances, RoutingProfile, RoutingUnits } from "../types";
+import { supportsAvoidances, supportsBicycleType, supportsRouteMode, supportsTravelSpeed, supportsVehicleOptions } from "../routing-constants";
+import type { BicycleRouteType, CarRouteMode, RoutingAvoidances, RoutingProfile, RoutingUnits } from "../types";
+import { Dropdown, menuRow, numberField } from "./routing-dropdown";
 import type { RoutingPanelContext } from "./routing-ui-context";
 import { PROFILE_ICONS, RC } from "./routing-ui-defaults";
-import { button, el, icon, setBooleanAttribute } from "./routing-ui-dom";
+import { el, icon, setBooleanAttribute } from "./routing-ui-dom";
+
+/** Vehicle dimensions the truck menu offers, in the design's order. */
+const VEHICLE_FIELDS = ["weight", "height", "length", "axleLoad"] as const;
+
+/** Bicycle sub-types the bicycle menu offers, in the design's order. */
+const BICYCLE_TYPES: readonly BicycleRouteType[] = ["road", "gravel", "mountain", "city"];
+
+/** Makes each menu's radio group unique, so two panels never share one. */
+let groupSequence = 0;
 
 /**
  * Takes a section out of the layout, leaving its placeholder behind so it can
@@ -27,11 +37,16 @@ function show(element: HTMLElement, placeholder: Comment): void {
 /**
  * The transport switcher and the filter row.
  *
- * Native form controls are used throughout — a `select` for the route
- * preference, `datetime-local` for the departure, checkboxes for the
- * avoidances. They are keyboard accessible and localized by the browser, and
- * they are styleable through the same custom properties as the rest of the
- * panel.
+ * The row is the design's RouteFilters: a line of pills, each showing its
+ * current value and opening a small menu. Which pills appear is decided by the
+ * profile — the route preference belongs to the car, the vehicle menu to the
+ * truck, the bicycle type and the speed to the bicycle and the pedestrian — so
+ * switching transport mode rewrites the row rather than greying parts of it
+ * out.
+ *
+ * Inside the menus the controls stay native — radios, checkboxes, number
+ * fields, `datetime-local` — so they remain keyboard accessible and localized
+ * by the browser.
  */
 export class FiltersView {
   /**
@@ -57,6 +72,12 @@ export class FiltersView {
   /** Avoidances are held here because the API only receives the ones switched on. */
   private avoidances: RoutingAvoidances = {};
   private routeMode: CarRouteMode = "fastest";
+  private vehicle: { weight?: number; height?: number; length?: number; axleLoad?: number; hazmat?: boolean } = {};
+  private bicycleType: BicycleRouteType | undefined = undefined;
+  private travelSpeed: number | undefined = undefined;
+
+  /** Live dropdowns, kept so their document listeners can be dropped. */
+  private dropdowns: Dropdown[] = [];
 
   constructor(context: RoutingPanelContext) {
     this.context = context;
@@ -176,19 +197,32 @@ export class FiltersView {
   //#region Filters
 
   private renderFilters(): void {
-    const { filters } = this.context.options;
+    const { filters, unitsSwitchable } = this.context.options;
     const profile = this.context.routing.getProfile();
     const fragment = document.createDocumentFragment();
+
+    // the row is rebuilt from scratch, so the previous dropdowns' document
+    // listeners have to go with them
+    for (const dropdown of this.dropdowns) dropdown.destroy();
+    this.dropdowns = [];
 
     for (const filter of filters) {
       // sections that cannot apply to this profile hide themselves, so a
       // consumer never has to re-configure the panel on a profile switch
       if (filter === "mode" && !supportsRouteMode(profile)) continue;
       if (filter === "avoidances" && !supportsAvoidances(profile)) continue;
+      if (filter === "vehicle" && !supportsVehicleOptions(profile)) continue;
+      if (filter === "bicycleType" && !supportsBicycleType(profile)) continue;
+      if (filter === "speed" && !supportsTravelSpeed(profile)) continue;
+      // a fixed unit has nothing to toggle
+      if (filter === "units" && !unitsSwitchable) continue;
 
       if (filter === "mode") fragment.append(this.buildRouteModeFilter());
       else if (filter === "departure") fragment.append(this.buildDepartureFilter());
       else if (filter === "avoidances") fragment.append(this.buildAvoidancesFilter());
+      else if (filter === "vehicle") fragment.append(this.buildVehicleFilter());
+      else if (filter === "bicycleType") fragment.append(this.buildBicycleTypeFilter());
+      else if (filter === "speed") fragment.append(this.buildSpeedFilter());
       else fragment.append(this.buildUnitsFilter());
     }
 
@@ -205,61 +239,110 @@ export class FiltersView {
     this.filtersElement.replaceChildren(fragment);
   }
 
-  private buildRouteModeFilter(): HTMLElement {
-    const { labels } = this.context.options;
-    const wrapper = el("div", RC.filter);
-    wrapper.dataset.filter = "mode";
-
-    const select = el("select", RC.select);
-    select.setAttribute("aria-label", labels.routes);
-
-    for (const mode of ["fastest", "shortest", "balanced"] as const) {
-      const option = el("option", undefined, labels.routeModes[mode] ?? mode);
-      option.value = mode;
-      option.selected = mode === this.routeMode;
-      select.append(option);
-    }
-
-    select.addEventListener("change", () => {
-      this.routeMode = select.value as CarRouteMode;
-      this.pushProfileOptions();
-    });
-
-    wrapper.append(select);
-    return wrapper;
+  /**
+   * Creates a dropdown, registers it for teardown and tags it with its filter
+   * id so a consumer's stylesheet can reach one in particular.
+   */
+  private createDropdown(filter: string, label: string, ariaLabel: string): Dropdown {
+    const dropdown = new Dropdown(label, ariaLabel);
+    dropdown.element.dataset.filter = filter;
+    this.dropdowns.push(dropdown);
+    return dropdown;
   }
 
+  /**
+   * A menu of mutually exclusive values, which is what most of the filters are.
+   *
+   * The pill shows the chosen value and the menu holds one radio per option, so
+   * the closed state answers "which one?" without being opened.
+   */
+  private buildChoiceFilter<T extends string>(
+    filter: string,
+    ariaLabel: string,
+    values: readonly T[],
+    labelOf: (value: T) => string,
+    isSelected: (value: T) => boolean,
+    onPick: (value: T) => void,
+  ): HTMLElement {
+    const current = values.find((value) => isSelected(value));
+    const dropdown = this.createDropdown(filter, current ? labelOf(current) : ariaLabel, ariaLabel);
+    const name = `maptiler-routing-${filter}-${(++groupSequence).toString()}`;
+
+    for (const value of values) {
+      const radio = el("input");
+      radio.type = "radio";
+      radio.name = name;
+      radio.checked = isSelected(value);
+      radio.addEventListener("change", () => {
+        dropdown.setLabel(labelOf(value));
+        dropdown.close();
+        onPick(value);
+      });
+
+      dropdown.menu.append(menuRow(labelOf(value), radio));
+    }
+
+    return dropdown.element;
+  }
+
+  private buildRouteModeFilter(): HTMLElement {
+    const { labels } = this.context.options;
+
+    return this.buildChoiceFilter(
+      "mode",
+      labels.routes,
+      ["fastest", "shortest", "balanced"] as const,
+      (mode) => labels.routeModes[mode] ?? mode,
+      (mode) => mode === this.routeMode,
+      (mode: CarRouteMode) => {
+        this.routeMode = mode;
+        this.pushProfileOptions();
+      },
+    );
+  }
+
+  /**
+   * Departure: "Now", or a moment picked in the field the menu holds.
+   *
+   * The two are one control rather than two filters — the field's own empty
+   * state is what "now" means to the API, so clearing it and choosing "Now" are
+   * the same action.
+   */
   private buildDepartureFilter(): HTMLElement {
     const { labels } = this.context.options;
-    const wrapper = el("div", RC.filter);
-    wrapper.dataset.filter = "departure";
+    const dropdown = this.createDropdown("departure", labels.departNow, labels.departure);
 
-    const input = el("input", RC.select);
+    const input = el("input", RC.dropdownNumber);
     input.type = "datetime-local";
     input.setAttribute("aria-label", labels.departure);
-    input.title = labels.departure;
+
+    const now = el("input");
+    now.type = "radio";
+    now.name = `maptiler-routing-departure-${(++groupSequence).toString()}`;
+    now.checked = true;
+    now.addEventListener("change", () => {
+      input.value = "";
+      dropdown.setLabel(labels.departNow);
+      dropdown.close();
+      this.context.routing.setDepartureTime(null);
+    });
 
     input.addEventListener("change", () => {
-      // an empty field means "leave now", which the API expresses by omitting
-      // the departure entirely
+      now.checked = input.value === "";
+      dropdown.setLabel(input.value === "" ? labels.departNow : input.value.replace("T", " "));
       this.context.routing.setDepartureTime(input.value ? input.value : null);
     });
 
-    wrapper.append(input);
-    return wrapper;
+    dropdown.menu.append(menuRow(labels.departNow, now), menuRow(labels.departure, input));
+    return dropdown.element;
   }
 
+  /** Avoidances: several switches at once, so the pill keeps its own name. */
   private buildAvoidancesFilter(): HTMLElement {
     const { avoidances, labels } = this.context.options;
-    const wrapper = el("div", RC.filter);
-    wrapper.dataset.filter = "avoidances";
-
-    const group = el("fieldset", RC.switchRow);
-    const legend = el("legend", RC.filterLabel, labels.avoid);
-    group.append(legend);
+    const dropdown = this.createDropdown("avoidances", labels.avoid, labels.avoid);
 
     for (const id of avoidances) {
-      const label = el("label");
       const checkbox = el("input");
       checkbox.type = "checkbox";
       checkbox.checked = this.avoidances[id] === true;
@@ -269,40 +352,83 @@ export class FiltersView {
         this.pushProfileOptions();
       });
 
-      label.append(checkbox, el("span", undefined, labels.avoidances[id] ?? id));
-      group.append(label);
+      dropdown.menu.append(menuRow(labels.avoidances[id] ?? id, checkbox));
     }
 
-    wrapper.append(group);
-    return wrapper;
+    return dropdown.element;
   }
 
-  private buildUnitsFilter(): HTMLElement {
+  /** Vehicle: the truck's dimensions and its hazardous-goods flag. */
+  private buildVehicleFilter(): HTMLElement {
     const { labels } = this.context.options;
-    const wrapper = el("div", RC.filter);
-    wrapper.dataset.filter = "units";
+    const dropdown = this.createDropdown("vehicle", labels.vehicle, labels.vehicle);
 
-    const group = el("div", RC.units);
-    group.setAttribute("role", "radiogroup");
-    group.setAttribute("aria-label", labels.units);
-
-    for (const unit of ["km", "mi"] as const) {
-      const option = button(RC.unit, unit);
-      option.dataset.units = unit;
-      option.setAttribute("role", "radio");
-      const isSelected = this.context.routing.getUnits() === unit;
-      setBooleanAttribute(option, "aria-checked", isSelected);
-      option.tabIndex = isSelected ? 0 : -1;
-
-      option.addEventListener("click", () => {
-        this.context.routing.setUnits(unit as RoutingUnits);
+    for (const field of VEHICLE_FIELDS) {
+      const input = numberField(this.vehicle[field], 0, 0.1, (value) => {
+        this.vehicle = { ...this.vehicle, [field]: value };
+        this.pushProfileOptions();
       });
 
-      group.append(option);
+      dropdown.menu.append(menuRow(labels.vehicleFields[field] ?? field, input));
     }
 
-    wrapper.append(group);
-    return wrapper;
+    const hazmat = el("input");
+    hazmat.type = "checkbox";
+    hazmat.checked = this.vehicle.hazmat === true;
+    hazmat.addEventListener("change", () => {
+      this.vehicle = { ...this.vehicle, hazmat: hazmat.checked };
+      this.pushProfileOptions();
+    });
+
+    dropdown.menu.append(menuRow(labels.vehicleFields.hazmat ?? "hazmat", hazmat));
+    return dropdown.element;
+  }
+
+  private buildBicycleTypeFilter(): HTMLElement {
+    const { labels } = this.context.options;
+
+    return this.buildChoiceFilter(
+      "bicycleType",
+      labels.bicycleType,
+      BICYCLE_TYPES,
+      (type) => labels.bicycleTypes[type] ?? type,
+      (type) => type === this.bicycleType,
+      (type) => {
+        this.bicycleType = type;
+        this.pushProfileOptions();
+      },
+    );
+  }
+
+  /** Speed: cycling or walking, depending on the profile. Both are in km/h. */
+  private buildSpeedFilter(): HTMLElement {
+    const { labels } = this.context.options;
+    const dropdown = this.createDropdown("speed", labels.speed, labels.speed);
+
+    const input = numberField(this.travelSpeed, 1, 1, (value) => {
+      this.travelSpeed = value;
+      dropdown.setLabel(value === undefined ? labels.speed : `${value.toString()} ${labels.speedUnit}`);
+      this.pushProfileOptions();
+    });
+
+    dropdown.menu.append(menuRow(labels.speedUnit, input));
+    return dropdown.element;
+  }
+
+  /** Units: only reachable when the developer opted into `units: "shown"`. */
+  private buildUnitsFilter(): HTMLElement {
+    const { labels } = this.context.options;
+
+    return this.buildChoiceFilter(
+      "units",
+      labels.units,
+      ["km", "mi"] as const,
+      (unit) => unit,
+      (unit) => unit === this.context.routing.getUnits(),
+      (unit: RoutingUnits) => {
+        this.context.routing.setUnits(unit);
+      },
+    );
   }
 
   /**
@@ -313,12 +439,33 @@ export class FiltersView {
    * request.
    */
   private pushProfileOptions(): void {
-    const profile = this.context.routing.getProfile();
+    // built per profile rather than merged from parts: the option shapes block
+    // each other's keys, so one object carrying both a `mode` and a
+    // `cyclingSpeed` matches none of them
+    switch (this.context.routing.getProfile()) {
+      case "car":
+        this.context.routing.setProfileOptions({ mode: this.routeMode, avoidances: this.avoidances });
+        return;
+      case "truck":
+        this.context.routing.setProfileOptions({ ...this.vehicle, avoidances: this.avoidances });
+        return;
+      case "bicycle":
+        this.context.routing.setProfileOptions({ type: this.bicycleType, cyclingSpeed: this.travelSpeed });
+        return;
+      default:
+        this.context.routing.setProfileOptions({ walkingSpeed: this.travelSpeed });
+    }
+  }
 
-    this.context.routing.setProfileOptions({
-      ...(supportsRouteMode(profile) ? { mode: this.routeMode } : {}),
-      ...(supportsAvoidances(profile) ? { avoidances: this.avoidances } : {}),
-    });
+  /** Closes every open menu. Called when the map moves under the panel. */
+  closeMenus(): void {
+    for (const dropdown of this.dropdowns) dropdown.close();
+  }
+
+  /** Drops the dropdowns' document listeners. Called when the control is removed. */
+  destroy(): void {
+    for (const dropdown of this.dropdowns) dropdown.destroy();
+    this.dropdowns = [];
   }
 
   //#endregion

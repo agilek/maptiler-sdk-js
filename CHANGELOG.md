@@ -11,6 +11,9 @@
   - Each route carries a travel-time badge halfway along its line, matching the Map Controls UI design; clicking one selects that route. Configure or disable it with `routeLabels`.
   - The control opens from a map-control button carrying the route icon, which becomes a close button while the panel is open; the map's other controls stack beneath it, beside the panel. `launcher: false` renders the panel on its own.
   - The panel's styles are isolated from the host page: a global `button { margin }` or similar no longer disturbs its layout.
+  - The filter row belongs to the transport mode: the car keeps the route preference and the avoidances, the truck swaps the preference for vehicle dimensions and a hazardous-goods switch, and the bicycle and the pedestrian get a bicycle type and a travel speed. Each filter is the design's dropdown, showing its current value when closed.
+  - `units` is the developer's choice rather than the end user's: `"km"` or `"mi"` fixes it, `"auto"` reads it from `config.unit` or the browser's locale, and `"shown"` is the one value that renders the toggle.
+  - While the first routes are on their way the results are a shimmering skeleton the size of the cards that will replace them, rather than a line of text. It stops moving under `prefers-reduced-motion`.
   - The panel is customisable through options (which transport modes and filters exist, units, alternates, interactions), CSS custom properties and a documented class-name contract, `labels` and `formatters` for localization, and `renderers.*` hooks that replace one subsection at a time.
   - `routing.directions()` exposes the API on its own, alongside helpers for decoding polylines, joining leg geometry, flattening steps and formatting distances and durations.
   - Enable it with `routing: true` / `routingControl: true` on the map, or per call. Each computed route counts against your MapTiler Cloud API key quota.

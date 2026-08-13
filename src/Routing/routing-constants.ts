@@ -128,6 +128,25 @@ export function supportsAvoidances(profile: RoutingProfile): boolean {
   return profile === "car" || profile === "truck";
 }
 
+/** `true` when the profile accepts vehicle dimensions and a hazardous-goods flag. */
+export function supportsVehicleOptions(profile: RoutingProfile): boolean {
+  return profile === "truck";
+}
+
+/** `true` when the profile accepts a {@link BicycleRouteType}. */
+export function supportsBicycleType(profile: RoutingProfile): boolean {
+  return profile === "bicycle";
+}
+
+/**
+ * `true` when the profile accepts a travel speed — `cyclingSpeed` for the
+ * bicycle, `walkingSpeed` on foot. The car and the truck have `topSpeed`, which
+ * is a cap rather than a pace and is not offered in the panel.
+ */
+export function supportsTravelSpeed(profile: RoutingProfile): boolean {
+  return profile === "bicycle" || profile === "pedestrian";
+}
+
 //#endregion
 
 //#region Resolved options

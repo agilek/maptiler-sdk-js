@@ -1,6 +1,6 @@
 import type { ControlPosition } from "maplibre-gl";
 import type { GeocodingFeature } from "@maptiler/client";
-import type { CarRouteMode, Route, RouteSummary, RoutingAvoidances, RoutingProfile, RoutingUnits, RoutingWaypoint, RoutingWaypointInput } from "../types";
+import type { BicycleRouteType, CarRouteMode, Route, RouteSummary, RoutingAvoidances, RoutingProfile, RoutingUnits, RoutingWaypoint, RoutingWaypointInput } from "../types";
 import type { FlatRouteStep } from "../routing-steps";
 import type { MaptilerRoutingControl } from "./MaptilerRoutingControl";
 
@@ -14,6 +14,12 @@ export const RoutingFilter = {
   DEPARTURE: "departure",
   /** Avoid tolls / motorways / ferries. Applies to the car and truck profiles only. */
   AVOIDANCES: "avoidances",
+  /** Vehicle weight, height, length, axle load and hazardous goods. Truck profile only. */
+  VEHICLE: "vehicle",
+  /** Road / gravel / mountain / city bicycle. Bicycle profile only. */
+  BICYCLE_TYPE: "bicycleType",
+  /** Cycling or walking speed. Applies to the bicycle and pedestrian profiles only. */
+  SPEED: "speed",
   /** Kilometers / miles toggle. */
   UNITS: "units",
 } as const;
@@ -23,6 +29,14 @@ export type RoutingFilter = (typeof RoutingFilter)[keyof typeof RoutingFilter];
 
 /** An avoidance switch inside the avoidances menu. */
 export type RoutingAvoidanceId = keyof RoutingAvoidances;
+
+/**
+ * How the panel decides which distance unit to use.
+ *
+ * A concrete unit fixes it, `"shown"` lets the end user pick, and `"auto"`
+ * takes it from the environment.
+ */
+export type RoutingUnitsOption = RoutingUnits | "shown" | "auto";
 
 /**
  * What a transport tab shows: its icon, its name, both, or nothing at all —
@@ -143,6 +157,18 @@ export type RoutingControlLabels = {
   departure?: string;
   /** The "leave now" option of the departure field. */
   departNow?: string;
+  /** Closed-state label of the vehicle menu. */
+  vehicle?: string;
+  /** Labels of the vehicle fields, all in metric units. */
+  vehicleFields?: Partial<Record<"weight" | "height" | "length" | "axleLoad" | "hazmat", string>>;
+  /** Closed-state label of the bicycle type menu. */
+  bicycleType?: string;
+  /** Per-bicycle-type labels. */
+  bicycleTypes?: Partial<Record<BicycleRouteType, string>>;
+  /** Closed-state label of the speed menu. */
+  speed?: string;
+  /** Unit suffix of the speed field. */
+  speedUnit?: string;
 };
 
 /**
@@ -242,8 +268,14 @@ export type RoutingControlTheme = {
   borderColor?: string;
   /** Tint a search field takes while the pointer is over it. */
   fieldHover?: string;
+  /** Color of a waypoint pin while its field is neither hovered nor focused. */
+  pinColor?: string;
   /** Color of error text. */
   dangerColor?: string;
+  /** Base color of the loading skeleton. */
+  skeletonColor?: string;
+  /** Color the skeleton's shimmer sweeps through. */
+  skeletonHighlight?: string;
   /** Corner radius of the panel and its cards. */
   radius?: string;
   /** Corner radius of small controls. */
@@ -376,10 +408,15 @@ export type MaptilerRoutingControlOptions = {
 
   /**
    * Which filter sections are shown, in the order they appear. A section that
-   * does not apply to the current profile hides itself regardless: the route
-   * preference is car-only and avoidances are car- and truck-only.
+   * does not apply to the current profile hides itself regardless, which is
+   * what gives each transport mode its own row: the route preference is
+   * car-only, the vehicle menu truck-only, the bicycle type bicycle-only, the
+   * speed bicycle- and pedestrian-only, and the avoidances car- and truck-only.
    *
-   * Default: `["mode", "departure", "avoidances", "units"]`
+   * The units toggle additionally needs {@link MaptilerRoutingControlOptions.units}
+   * to be `"shown"` — with a fixed unit there is nothing for it to switch.
+   *
+   * Default: `["mode", "departure", "vehicle", "bicycleType", "speed", "avoidances", "units"]`
    */
   filters?: readonly RoutingFilter[];
 
@@ -391,11 +428,18 @@ export type MaptilerRoutingControlOptions = {
   avoidances?: readonly RoutingAvoidanceId[];
 
   /**
-   * Distance units for the request and for every distance shown.
+   * Distance units for the request and for every distance shown. This is the
+   * developer's choice, not the end user's — except in `"shown"`, which is the
+   * one value that hands the decision over.
    *
-   * Default: `mi` when `config.unit` is `imperial`, `km` otherwise.
+   * - `"km"` / `"mi"` — fixed. No toggle is rendered.
+   * - `"shown"` — the panel renders the units toggle, starting from `"auto"`.
+   * - `"auto"` — taken from the environment: `config.unit` when the SDK has
+   *   been told, otherwise the region of the browser's locale.
+   *
+   * Default: `"auto"`
    */
-  units?: RoutingUnits;
+  units?: RoutingUnitsOption;
 
   /** Language of the turn-by-turn instructions. Defaults to the SDK's primary language. */
   language?: string;

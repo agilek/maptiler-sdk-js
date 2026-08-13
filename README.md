@@ -2002,7 +2002,7 @@ or, added like any other control:
 map.addControl(
   new MaptilerRoutingControl({
     modes: ["car", "bicycle"],   // which transport tabs exist, in order
-    filters: ["departure", "units"],
+    filters: ["departure", "avoidances"],
     alternates: 2,
   }),
   "top-left",
@@ -2100,9 +2100,13 @@ new MaptilerRoutingControl({
   showSingleMode: false,                // drop the switcher when one mode is left
   launcher: true,                       // the button that opens the panel
   open: false,                          // whether it starts open
-  filters: ["mode", "units"],           // "mode" | "departure" | "avoidances" | "units"
+  filters: ["mode", "departure"],       // in order; each profile keeps what applies to it:
+                                        // "mode" (car) | "departure" | "vehicle" (truck)
+                                        // "bicycleType" | "speed" (bike, walk)
+                                        // "avoidances" (car, truck) | "units"
   avoidances: ["tolls", "ferry"],
-  units: "mi",
+  units: "mi",                          // "km" | "mi" fixed, "shown" lets the user pick,
+                                        // "auto" reads it from the browser
   maxWaypoints: 6,
   search: { minLength: 3, country: ["ch", "de"] },
   clickToAddWaypoint: "armed",          // "off" | "armed" | "always"
@@ -2142,8 +2146,9 @@ A dark panel, copy-pasteable:
 
 The class names are part of the public API: `maptiler-routing`, `-header`, `-body`, `-modes`,
 `-mode`, `-waypoints`, `-waypoint`, `-waypoint-field`, `-waypoint-input`, `-suggestions`,
-`-suggestion`, `-actions`, `-add-stop`, `-pick-on-map`, `-filters`, `-select`, `-units`, `-unit`,
-`-status`, `-error`, `-routes`, `-route-card`, `-route-duration`, `-route-meta`, `-steps`, `-step`
+`-suggestion`, `-actions`, `-add-stop`, `-pick-on-map`, `-filters`, `-dropdown`, `-dropdown-toggle`,
+`-dropdown-menu`, `-dropdown-row`, `-status`, `-error`, `-skeleton`, `-skeleton-card`, `-routes`,
+`-route-card`, `-route-duration`, `-route-meta`, `-route-detail`, `-steps`, `-step`
 and `-icon`. `unstyled: true` drops the root class, so nothing the SDK ships applies and the DOM is
 yours to style from scratch.
 

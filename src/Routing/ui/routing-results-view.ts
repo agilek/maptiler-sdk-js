@@ -18,6 +18,7 @@ export class ResultsView {
   private readonly context: RoutingPanelContext;
   private readonly statusElement: HTMLParagraphElement;
   private readonly errorElement: HTMLParagraphElement;
+  private readonly skeleton: HTMLElement;
   private readonly routesHeader: HTMLElement;
   private readonly routesList: HTMLUListElement;
   private readonly detailElement: HTMLElement;
@@ -42,6 +43,15 @@ export class ResultsView {
     this.errorElement.setAttribute("role", "alert");
     this.errorElement.hidden = true;
 
+    // RouteLoading: one placeholder per card the request is expected to return,
+    // shown in place of the status line while the first result is on its way
+    this.skeleton = el("div", RC.skeleton);
+    this.skeleton.setAttribute("aria-hidden", "true");
+    this.skeleton.hidden = true;
+    for (let index = 0; index < Math.min(context.options.alternates + 1, 3); index++) {
+      this.skeleton.append(el("div", RC.skeletonCard));
+    }
+
     this.routesHeader = el("div", RC.routesHeader);
     this.routesHeader.append(el("h3", undefined, labels.routes));
     this.routesHeader.hidden = true;
@@ -65,7 +75,7 @@ export class ResultsView {
     this.detailElement.append(detailTop, this.detailSummary, this.stepsList);
 
     this.element = el("div");
-    this.element.append(this.statusElement, this.errorElement, this.routesHeader, this.routesList, this.detailElement);
+    this.element.append(this.statusElement, this.errorElement, this.skeleton, this.routesHeader, this.routesList, this.detailElement);
   }
 
   //#region State
@@ -109,6 +119,13 @@ export class ResultsView {
     const text =
       this.status === "loading" && routes.length === 0 ? labels.loading : this.status === "empty" ? labels.noRoutes : this.status === "idle" ? labels.needsWaypoints : "";
 
+    // the skeleton stands in for the first result, so the "Calculating route…"
+    // line is clipped rather than removed: it is the live region that tells a
+    // screen reader what the placeholders mean
+    const skeletonShowing = this.status === "loading" && routes.length === 0 && !this.isDetailOpen();
+    this.skeleton.hidden = !skeletonShowing;
+    setDataFlag(this.statusElement, "silent", skeletonShowing);
+
     this.statusElement.textContent = text;
     this.statusElement.hidden = text === "" || this.isDetailOpen();
 
@@ -146,7 +163,7 @@ export class ResultsView {
       setBooleanAttribute(body, "aria-pressed", selected);
       body.append(
         el("span", RC.routeDuration, formatters.duration(route.summary.totalTime)),
-        el("span", RC.routeMeta, this.describeRoute(route)),
+        this.renderRouteMeta(route),
         el("span", RC.routeDescription, formatters.routeDescription(route.summary)),
       );
       body.addEventListener("click", () => {
@@ -155,7 +172,9 @@ export class ResultsView {
       card.append(body);
 
       if (turnByTurn.enabled) {
-        const detail = button(RC.routeDetail, labels.showDetail, "chevron-right");
+        // RouteOptions: a 32px bordered square carrying the RoutingStart icon,
+        // the same one the launcher uses
+        const detail = button(RC.routeDetail, labels.showDetail, "route-start");
         detail.addEventListener("click", () => {
           this.context.routing.selectRoute(index);
           this.showDetail(detail);
@@ -172,11 +191,23 @@ export class ResultsView {
     this.routesList.hidden = this.isDetailOpen();
   }
 
-  /** The middle line of a card: distance and arrival time. */
-  private describeRoute(route: Route): string {
+  /**
+   * The middle line of a card: arrival time and distance, each behind its own
+   * icon, as two groups rather than one dot-separated sentence.
+   */
+  private renderRouteMeta(route: Route): HTMLElement {
     const { formatters, labels } = this.context.options;
     const units = this.context.routing.getUnits();
-    return `${formatters.distance(route.summary.totalLength, units)} · ${formatters.arrival(route.summary.totalTime)} ${labels.eta}`;
+
+    const arrival = el("span", RC.routeMetaItem);
+    arrival.append(icon("clock"), el("span", undefined, `${formatters.arrival(route.summary.totalTime)} ${labels.eta}`));
+
+    const distance = el("span", RC.routeMetaItem);
+    distance.append(icon("path"), el("span", undefined, formatters.distance(route.summary.totalLength, units)));
+
+    const meta = el("span", RC.routeMeta);
+    meta.append(arrival, distance);
+    return meta;
   }
 
   private renderSteps(): void {
@@ -243,6 +274,7 @@ export class ResultsView {
     this.routesHeader.hidden = true;
     this.routesList.hidden = true;
     this.statusElement.hidden = true;
+    this.skeleton.hidden = true;
     this.renderSteps();
     this.detailElement.querySelector<HTMLButtonElement>(`.${RC.detailBack}`)?.focus();
     this.context.control.fire("routinguiviewchange", { view: "detail" });
