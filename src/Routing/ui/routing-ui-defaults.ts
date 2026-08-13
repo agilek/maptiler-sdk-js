@@ -132,6 +132,7 @@ export const CSS_VARS: Readonly<Record<keyof RoutingControlTheme, string>> = Obj
   shadow: "--maptiler-routing-shadow",
   listShadow: "--maptiler-routing-list-shadow",
   stepDivider: "--maptiler-routing-step-divider",
+  placeholderColor: "--maptiler-routing-placeholder-color",
 });
 
 //#endregion

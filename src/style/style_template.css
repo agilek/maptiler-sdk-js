@@ -223,6 +223,8 @@
   --maptiler-routing-list-shadow: 0 10px 35px rgb(51 51 89 / 15%);
   /* the hairline between turn-by-turn steps, lighter than the panel's border */
   --maptiler-routing-step-divider: #e1eaff;
+  /* the gap a row leaves behind while it is being dragged */
+  --maptiler-routing-placeholder-color: #eceef2;
   --maptiler-routing-icon-size: 18px;
   --maptiler-routing-radius: 10px;
   --maptiler-routing-radius-small: 4px;
@@ -425,6 +427,12 @@
   outline-offset: 1px;
 }
 
+.maptiler-routing .maptiler-routing-waypoint-handle:focus:not(:focus-visible) {
+  /* picking the row up is a pointer gesture; the ring belongs to the keyboard
+     route into the same control, which `:focus-visible` still covers */
+  outline: none;
+}
+
 .maptiler-routing .maptiler-routing-waypoint-input:focus-visible {
   /* the field around it already turns accent-bordered when focused, which is
      the design's own focus affordance — a second ring inside it reads as two
@@ -500,33 +508,29 @@
 }
 
 /* While a row is being carried, its place is held by a placeholder the same
-   size — the row itself is under the cursor, so leaving it in place, faded,
-   would show it in two places at once. */
-.maptiler-routing-waypoint[data-dragging] > * {
-  visibility: hidden;
-}
+   size — the row itself is under the cursor, so leaving it in place would show
+   it in two places at once.
 
+   The placeholder covers the row rather than hiding its contents: a drag
+   source that stops being rendered mid-drag cancels the drag. */
 .maptiler-routing-waypoint[data-dragging]::before {
   content: "";
   position: absolute;
-  inset: 0 0 0 34px;
+  z-index: 1;
+  /* the field's own box: the handle stays visible, and the delete button is
+     not part of what is being moved */
+  inset: 0 42px 0 34px;
   border-radius: 8px;
-  background: linear-gradient(
-    100deg,
-    var(--maptiler-routing-skeleton-color) 0%,
-    var(--maptiler-routing-skeleton-highlight) 50%,
-    var(--maptiler-routing-skeleton-color) 100%
-  );
-  background-size: 200% 100%;
-  animation: maptiler-routing-skeleton 1.4s ease-in-out infinite;
+  background: var(--maptiler-routing-placeholder-color);
 }
 
 /* Where the row would land, drawn on the edge it would land against. */
 .maptiler-routing-waypoint[data-drop]::after {
   content: "";
   position: absolute;
+  /* the width of the field it would land beside */
   left: 34px;
-  right: 0;
+  right: 42px;
   height: 2px;
   border-radius: 2px;
   background: var(--maptiler-routing-accent);

@@ -322,6 +322,8 @@ export type RoutingControlTheme = {
   listShadow?: string;
   /** Hairline between turn-by-turn steps. */
   stepDivider?: string;
+  /** The gap a stop leaves behind while it is being dragged. */
+  placeholderColor?: string;
 };
 
 //#endregion
