@@ -19,7 +19,7 @@
     #panel {
       position: absolute;
       top: 10px;
-      right: 10px;
+      left: 10px;
       z-index: 2;
       width: 290px;
       max-height: calc(100% - 20px);
@@ -97,7 +97,7 @@
 
   <div id="panel">
     <h1>Routing control</h1>
-    <p class="hint">Every button below reconfigures the panel on the left by rebuilding the control with new options.</p>
+    <p class="hint">Every button below reconfigures the routing control on the right by rebuilding the control with new options.</p>
 
     <div class="group">
       <span class="label">Transport modes</span>
@@ -127,7 +127,7 @@
       <label class="check"><input type="checkbox" id="opt-search" checked> Place search</label>
       <label class="check"><input type="checkbox" id="opt-drag" checked> Drag waypoints on map</label>
       <label class="check"><input type="checkbox" id="opt-turn" checked> Turn-by-turn</label>
-      <label class="check"><input type="checkbox" id="opt-collapsible" checked> Collapsible</label>
+      <label class="check"><input type="checkbox" id="opt-launcher" checked> Launcher button (unticked: always open)</label>
     </div>
 
     <div class="group">
@@ -157,7 +157,7 @@
       <button data-api="waypoints">Set waypoints</button>
       <button data-api="select">Select route 2</button>
       <button data-api="detail">Open turn-by-turn</button>
-      <button data-api="collapse">Collapse</button>
+      <button data-api="collapse">Open / close panel</button>
     </div>
 
     <div class="group">

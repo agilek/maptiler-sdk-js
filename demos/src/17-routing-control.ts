@@ -29,7 +29,7 @@ let options: MaptilerRoutingControlOptions = {
 };
 
 let control = new MaptilerRoutingControl(options);
-map.addControl(control, "top-left");
+map.addControl(control, "top-right");
 wireEvents(control);
 
 /**
@@ -42,13 +42,13 @@ function apply(patch: Partial<MaptilerRoutingControlOptions>) {
   options = { ...options, ...patch };
   map.removeControl(control);
   control = new MaptilerRoutingControl(options);
-  map.addControl(control, "top-left");
+  map.addControl(control, "top-right");
   wireEvents(control);
   log(`options: ${Object.keys(patch).join(", ")}`);
 }
 
 function wireEvents(instance: MaptilerRoutingControl) {
-  for (const type of ["routinguiopen", "routinguicollapse", "routinguiviewchange", "routinguistepclick", "routinguipickstart", "routinguipickend"]) {
+  for (const type of ["routinguiopen", "routinguiclose", "routinguiviewchange", "routinguistepclick", "routinguipickstart", "routinguipickend"]) {
     instance.on(type, () => {
       log(type);
     });
@@ -104,8 +104,8 @@ document.getElementById("opt-drag")!.addEventListener("change", (event) => {
 document.getElementById("opt-turn")!.addEventListener("change", (event) => {
   apply({ turnByTurn: (event.target as HTMLInputElement).checked });
 });
-document.getElementById("opt-collapsible")!.addEventListener("change", (event) => {
-  apply({ collapsible: (event.target as HTMLInputElement).checked });
+document.getElementById("opt-launcher")!.addEventListener("change", (event) => {
+  apply({ launcher: (event.target as HTMLInputElement).checked });
 });
 
 //#endregion

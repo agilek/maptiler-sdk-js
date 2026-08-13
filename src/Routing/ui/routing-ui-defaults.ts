@@ -25,9 +25,8 @@ import type {
  */
 export const RC = Object.freeze({
   root: "maptiler-routing",
-  header: "maptiler-routing-header",
-  title: "maptiler-routing-title",
-  toggle: "maptiler-routing-toggle",
+  launcher: "maptiler-routing-launcher",
+  panel: "maptiler-routing-panel",
   body: "maptiler-routing-body",
   view: "maptiler-routing-view",
 
@@ -197,7 +196,7 @@ export const DEFAULT_SEARCH_LIMIT = 5;
 /** Every string the panel shows, in English. */
 export const DEFAULT_LABELS: Required<RoutingControlLabels> = Object.freeze({
   title: "Directions",
-  toggle: "Toggle the directions panel",
+  close: "Close the directions panel",
   from: "Choose a starting point",
   to: "Choose a destination",
   stop: "Choose a stop",
@@ -263,8 +262,8 @@ export type ResolvedTurnByTurnOptions = {
 /** {@link MaptilerRoutingControlOptions} with every value resolved. */
 export type ResolvedControlOptions = {
   position: import("maplibre-gl").ControlPosition;
-  collapsible: boolean;
-  collapsed: boolean;
+  launcher: boolean;
+  open: boolean;
   className?: string;
   unstyled: boolean;
   modes: RoutingModeConfig[];
@@ -307,8 +306,9 @@ export function resolveControlOptions(options: MaptilerRoutingControlOptions = {
 
   return {
     position: options.position ?? "top-left",
-    collapsible: options.collapsible ?? true,
-    collapsed: options.collapsed ?? false,
+    launcher: options.launcher ?? true,
+    // with no launcher there is nothing to open it with, so it starts open
+    open: options.open ?? options.launcher === false,
     className: options.className,
     unstyled: options.unstyled ?? false,
     modes: (options.modes ?? DEFAULT_MODES).map((mode) => (typeof mode === "string" ? { id: mode } : mode)),

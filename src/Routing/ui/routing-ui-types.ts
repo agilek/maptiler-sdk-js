@@ -79,10 +79,10 @@ export type RoutingModeConfig = {
  * translate as much or as little as they need.
  */
 export type RoutingControlLabels = {
-  /** Panel title. */
+  /** Accessible name of the control, and of the launcher that opens it. */
   title?: string;
-  /** Accessible name of the collapse toggle. */
-  toggle?: string;
+  /** Accessible name of the launcher while the panel is open. */
+  close?: string;
   /** Placeholder of the first waypoint row. */
   from?: string;
   /** Placeholder of the last waypoint row. */
@@ -290,18 +290,23 @@ export type MaptilerRoutingControlOptions = {
   position?: ControlPosition;
 
   /**
-   * Whether the panel has a header with a collapse button.
+   * Whether the control shows its launcher: a map-control button that opens
+   * the panel, and turns into a close button while it is open.
+   *
+   * `false` renders the panel on its own, always open — for a layout that
+   * already has somewhere to put it.
    *
    * Default: `true`
    */
-  collapsible?: boolean;
+  launcher?: boolean;
 
   /**
-   * Whether the panel starts collapsed. Requires `collapsible`.
+   * Whether the panel starts open.
    *
-   * Default: `false`
+   * Default: `false` when the launcher is shown, so the map starts
+   * unobstructed as in the design; `true` when it is not.
    */
-  collapsed?: boolean;
+  open?: boolean;
 
   /** Extra class names added to the panel root, for scoping your own CSS. */
   className?: string;

@@ -1991,6 +1991,11 @@ import { Map, MaptilerRoutingControl } from "@maptiler/sdk";
 const map = new Map({ container: "map", routingControl: true });
 ```
 
+By default the control shows only a small map-control button carrying the route icon. Pressing it
+opens the panel beside it, and the button becomes a close button; the map's other controls stack
+underneath it, alongside the panel. Pass `launcher: false` to render the panel on its own, always
+open.
+
 or, added like any other control:
 
 ```ts
@@ -2093,6 +2098,8 @@ new MaptilerRoutingControl({
   modes: [{ id: "car", label: "Drive" }, { id: "bicycle" }],
   modeDisplay: "icon",                  // "both" | "icon" | "label" | "none"
   showSingleMode: false,                // drop the switcher when one mode is left
+  launcher: true,                       // the button that opens the panel
+  open: false,                          // whether it starts open
   filters: ["mode", "units"],           // "mode" | "departure" | "avoidances" | "units"
   avoidances: ["tolls", "ferry"],
   units: "mi",

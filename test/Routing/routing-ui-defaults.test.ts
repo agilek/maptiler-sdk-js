@@ -40,7 +40,8 @@ describe("resolveControlOptions", () => {
     expect(options.modes.map((mode) => mode.id)).toEqual(["car", "truck", "bicycle", "pedestrian"]);
     expect(options.filters).toEqual(["mode", "departure", "avoidances", "units"]);
     expect(options.clickToAddWaypoint).toBe("armed");
-    expect(options.collapsible).toBe(true);
+    expect(options.launcher).toBe(true);
+    expect(options.open).toBe(false);
     expect(options.turnByTurn.enabled).toBe(true);
     expect(options.search.enabled).toBe(true);
     expect(options.modeDisplay).toBe("both");
@@ -49,6 +50,11 @@ describe("resolveControlOptions", () => {
 
   it.each(["icon", "label", "both", "none"] as const)("accepts %s as the transport tab content", (modeDisplay) => {
     expect(resolveControlOptions({ modeDisplay }).modeDisplay).toBe(modeDisplay);
+  });
+
+  it("opens by default when there is no launcher to open it with", () => {
+    expect(resolveControlOptions({ launcher: false }).open).toBe(true);
+    expect(resolveControlOptions({ launcher: false, open: false }).open).toBe(false);
   });
 
   it("can drop the switcher when a single mode is left", () => {

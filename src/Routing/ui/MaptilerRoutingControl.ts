@@ -62,7 +62,8 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
   private map?: SDKMap;
   private routing?: RoutingController;
   private root?: HTMLElement;
-  private body?: HTMLElement;
+  private panel?: HTMLElement;
+  private launcherButton?: HTMLButtonElement;
 
   private waypointsView?: WaypointsView;
   private filtersView?: FiltersView;
@@ -70,7 +71,7 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
   private queue?: RenderQueue;
 
   private geocoder?: RoutingGeocoder;
-  private collapsed: boolean;
+  private opened: boolean;
   private picking = false;
   private savedCursor = "";
 
@@ -91,7 +92,7 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
     super();
     this.userOptions = options;
     this.options = resolveControlOptions(options);
-    this.collapsed = this.options.collapsed;
+    this.opened = this.options.open;
   }
 
   //#region IControl
@@ -163,10 +164,15 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
     this.queue?.cancel();
     this.setPicking(false);
 
+    // the offset lives on MapLibre's corner container, which outlives us
+    const container = this.root?.parentElement;
+    if (container) container.style.marginRight = "";
+
     if (this.root) DOMremove(this.root);
 
     this.root = undefined;
-    this.body = undefined;
+    this.panel = undefined;
+    this.launcherButton = undefined;
     this.map = undefined;
     this.routing = undefined;
     this.waypointsView = undefined;
@@ -190,32 +196,39 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
    * @param views - Root elements of the views, in display order.
    */
   private buildShell(views: HTMLElement[]): HTMLElement {
-    const { labels, collapsible, className, unstyled } = this.options;
+    const { labels, launcher, className, unstyled } = this.options;
 
-    // the MapLibre control class gives the panel its corner positioning; the
+    // the MapLibre control class gives the control its corner positioning; the
     // routing class is what every shipped style rule is scoped under, so
     // dropping it is how `unstyled` works
     const root = el("div", ["maplibregl-ctrl", unstyled ? "" : RC.root, className ?? ""].filter(Boolean).join(" "));
-    root.setAttribute("role", "region");
-    root.setAttribute("aria-label", labels.title);
     root.dataset.profile = this.routing?.getProfile() ?? "car";
+    if (launcher) root.dataset.launcher = "";
+    // assigned here, not from the caller: the state appliers below run before
+    // this method returns and read it
+    this.root = root;
+
+    // the panel itself is the labelled region; the root is only a layout row
+    // holding the launcher next to it
+    const panel = el("div", RC.panel);
+    panel.id = `maptiler-routing-panel-${Math.random().toString(36).slice(2, 8)}`;
+    panel.setAttribute("role", "region");
+    panel.setAttribute("aria-label", labels.title);
+    this.panel = panel;
 
     const body = el("div", RC.body);
-    body.id = `maptiler-routing-body-${Math.random().toString(36).slice(2, 8)}`;
-    this.body = body;
 
-    if (collapsible) {
-      const header = el("div", RC.header);
-      header.append(el("h2", RC.title, labels.title));
-
-      const toggle = button(RC.toggle, labels.toggle, "chevron-down");
-      toggle.setAttribute("aria-controls", body.id);
-      toggle.addEventListener("click", () => {
+    if (launcher) {
+      // the design puts the button left of the panel, so it stays put as the
+      // panel opens and closes beside it
+      const launcherButton = button(RC.launcher, labels.title, "route-start");
+      launcherButton.setAttribute("aria-controls", panel.id);
+      launcherButton.addEventListener("click", () => {
         this.toggle();
       });
 
-      header.append(toggle);
-      root.append(header);
+      this.launcherButton = launcherButton;
+      root.append(launcherButton);
     }
 
     const listView = el("div", RC.view);
@@ -223,12 +236,13 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
     listView.append(...views);
 
     body.append(listView);
-    root.append(body);
+    panel.append(body);
+    root.append(panel);
 
     const footer = this.options.renderers.footer?.({ control: this, labels, formatters: this.options.formatters });
-    if (footer) root.append(footer);
+    if (footer) panel.append(footer);
 
-    this.applyCollapsed();
+    this.applyOpenState();
     return root;
   }
 
@@ -486,14 +500,66 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
     setDataFlag(this.root, "picking", this.picking);
   }
 
-  private applyCollapsed(): void {
-    if (!this.root || !this.body) return;
+  /**
+   * Reflects the open state: the panel is taken out of the layout entirely
+   * when closed, and the launcher swaps to a close icon while it is open.
+   */
+  private applyOpenState(): void {
+    if (!this.root || !this.panel) return;
 
-    this.body.hidden = this.collapsed;
-    setDataFlag(this.root, "collapsed", this.collapsed);
+    this.panel.hidden = !this.opened;
+    setDataFlag(this.root, "open", this.opened);
 
-    const toggle = this.root.querySelector<HTMLButtonElement>(`.${RC.toggle}`);
-    if (toggle) setBooleanAttribute(toggle, "aria-expanded", !this.collapsed);
+    const launcher = this.launcherButton;
+    if (!launcher) return;
+
+    const { labels } = this.options;
+    setBooleanAttribute(launcher, "aria-expanded", this.opened);
+    launcher.setAttribute("aria-label", this.opened ? labels.close : labels.title);
+    launcher.title = this.opened ? labels.close : labels.title;
+
+    const icon = launcher.querySelector<HTMLElement>(`.${RC.icon}`);
+    if (icon) icon.dataset.icon = this.opened ? "close" : "route-start";
+
+    this.applyLayoutOffset();
+  }
+
+  /**
+   * Makes room for the panel beside the controls rather than above them.
+   *
+   * The panel is out of the control's flow box, so the corner column would
+   * otherwise sit on top of it. Shifting the whole column aside by the panel's
+   * width puts the launcher, and every control stacked under it, alongside the
+   * panel — which is where the design has them.
+   *
+   * Only the right-hand corners need it: from a left corner the panel opens
+   * into the map, away from the controls.
+   */
+  private applyLayoutOffset(): void {
+    const container = this.root?.parentElement;
+    const panel = this.panel;
+    if (!container || !panel || !this.options.launcher) return;
+
+    const rightCorner = container.classList.contains("maplibregl-ctrl-top-right") || container.classList.contains("maplibregl-ctrl-bottom-right");
+
+    if (!this.opened || !rightCorner) {
+      container.style.marginRight = "";
+      panel.style.right = "";
+      panel.style.left = rightCorner || !this.opened ? "" : `calc(100% + ${this.gapPx().toString()}px)`;
+      return;
+    }
+
+    // measured rather than assumed: the width is a themeable custom property
+    const offset = panel.getBoundingClientRect().width + this.gapPx();
+    container.style.marginRight = `${offset.toString()}px`;
+    panel.style.right = `${(-offset).toString()}px`;
+  }
+
+  /** The gap between the launcher and the panel, in pixels. */
+  private gapPx(): number {
+    if (!this.root) return 8;
+    const value = getComputedStyle(this.root).getPropertyValue("--maptiler-routing-gap");
+    return parseFloat(value) || 8;
   }
 
   //#endregion
@@ -510,25 +576,32 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
     return this.routing;
   }
 
-  /** Expands the panel. */
+  /** Opens the panel. */
   open(): this {
-    this.collapsed = false;
-    this.applyCollapsed();
+    if (this.opened) return this;
+    this.opened = true;
+    this.applyOpenState();
     this.fire("routinguiopen", {});
     return this;
   }
 
-  /** Collapses the panel to its header. */
-  collapse(): this {
-    this.collapsed = true;
-    this.applyCollapsed();
-    this.fire("routinguicollapse", {});
+  /** Closes the panel, leaving only the launcher. */
+  close(): this {
+    if (!this.opened) return this;
+    this.opened = false;
+    this.applyOpenState();
+    this.fire("routinguiclose", {});
     return this;
   }
 
-  /** Collapses the panel if it is open, expands it otherwise. */
+  /** Opens the panel if it is closed, closes it otherwise. */
   toggle(): this {
-    return this.collapsed ? this.open() : this.collapse();
+    return this.opened ? this.close() : this.open();
+  }
+
+  /** `true` while the panel is open. */
+  isOpen(): boolean {
+    return this.opened;
   }
 
   /** Shows the route list. */

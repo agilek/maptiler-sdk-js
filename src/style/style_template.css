@@ -195,7 +195,7 @@
    ───────────────────────────────────────────────────────────────────────── */
 
 .maptiler-routing {
-  --maptiler-routing-width: 360px;
+  --maptiler-routing-width: 400px;
   --maptiler-routing-max-height: calc(100vh - 40px);
   --maptiler-routing-font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   --maptiler-routing-font-size: 13px;
@@ -212,25 +212,79 @@
   --maptiler-routing-radius: 10px;
   --maptiler-routing-radius-small: 4px;
   --maptiler-routing-gap: 8px;
-  --maptiler-routing-padding: 14px;
+  --maptiler-routing-padding: 16px;
   /* mirrors the .maplibregl-ctrl-group shadow at the top of this file, so the
      panel reads as part of the same control set */
   --maptiler-routing-shadow: 0 0 6px 2px rgb(0 0 0 / 8%);
   --maptiler-routing-transition-duration: 150ms;
 
+  /* The control is a row: the launcher, then the panel beside it. MapLibre
+     right-aligns top-right controls, so a closed panel leaves just the button
+     in the corner and an open one grows away from the edge — the two states in
+     the design's mockups. */
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--maptiler-routing-gap);
+  position: relative;
+  color: var(--maptiler-routing-text-color);
+  font-family: var(--maptiler-routing-font-family);
+  font-size: var(--maptiler-routing-font-size);
+  line-height: 1.45;
+}
+
+/* With a launcher, the panel leaves the control's flow box: the control then
+   measures only the launcher, so MapLibre stacks zoom, compass and the rest
+   directly beneath it instead of below the full height of the panel. The
+   control shifts its corner container aside by the panel's width (see
+   applyLayoutOffset) and the panel is pulled back the same distance, so it
+   still sits flush against the map edge. */
+.maptiler-routing[data-launcher] .maptiler-routing-panel {
+  position: absolute;
+  top: 0;
+}
+
+.maptiler-routing-panel {
   display: flex;
   flex-direction: column;
   width: var(--maptiler-routing-width);
   max-width: calc(100vw - 20px);
   max-height: var(--maptiler-routing-max-height);
   background: var(--maptiler-routing-surface);
-  color: var(--maptiler-routing-text-color);
   border-radius: var(--maptiler-routing-radius);
   box-shadow: var(--maptiler-routing-shadow);
-  font-family: var(--maptiler-routing-font-family);
-  font-size: var(--maptiler-routing-font-size);
-  line-height: 1.45;
   overflow: hidden;
+}
+
+/* The launcher: a map-control button carrying the route icon, which becomes a
+   close button while the panel is open.
+
+   It repeats the metrics of the SDK's own control buttons at the top of this
+   file — 33px square, 3px radius, the same shadow and white ground — so it
+   reads as one of the same family as zoom and compass sitting beside it. The
+   selector carries the element as well as the class so it outranks the button
+   reset below, which would otherwise strip the background back to none. */
+.maptiler-routing button.maptiler-routing-launcher {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 33px;
+  height: 33px;
+  flex: none;
+  padding: 0;
+  background: var(--maptiler-routing-surface);
+  border-radius: 3px;
+  box-shadow: var(--maptiler-routing-shadow);
+  color: var(--maptiler-routing-text-color);
+}
+
+.maptiler-routing button.maptiler-routing-launcher:hover {
+  background: var(--maptiler-routing-surface-alt);
+}
+
+.maptiler-routing-launcher .maptiler-routing-icon {
+  width: 24px;
+  height: 24px;
 }
 
 .maptiler-routing *,
@@ -249,25 +303,8 @@
   display: none;
 }
 
-/* Header */
-
-.maptiler-routing-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--maptiler-routing-gap);
-  padding: var(--maptiler-routing-padding);
-  padding-bottom: 8px;
-}
-
-.maptiler-routing-title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-}
-
 .maptiler-routing-body {
-  padding: 0 var(--maptiler-routing-padding) var(--maptiler-routing-padding);
+  padding: var(--maptiler-routing-padding);
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
@@ -288,7 +325,6 @@
   cursor: default;
 }
 
-.maptiler-routing-toggle,
 .maptiler-routing-waypoint-remove,
 .maptiler-routing-waypoint-handle,
 .maptiler-routing-route-detail,
@@ -305,7 +341,6 @@
   color: var(--maptiler-routing-muted-color);
 }
 
-.maptiler-routing-toggle:hover,
 .maptiler-routing-waypoint-remove:hover:not(:disabled),
 .maptiler-routing-route-detail:hover,
 .maptiler-routing-detail-back:hover {
@@ -324,7 +359,7 @@
   display: flex;
   gap: 4px;
   padding: 4px;
-  margin-bottom: var(--maptiler-routing-gap);
+  margin-bottom: 16px;
   background: var(--maptiler-routing-surface-alt);
   border-radius: var(--maptiler-routing-radius-small);
 }
@@ -375,9 +410,9 @@
   align-items: center;
   flex: 1;
   min-width: 0;
-  gap: 6px;
+  gap: 8px;
   padding: 0 10px;
-  height: 40px;
+  height: 42px;
   background: var(--maptiler-routing-surface);
   border: 1px solid var(--maptiler-routing-border-color);
   border-radius: var(--maptiler-routing-radius-small);
@@ -755,17 +790,6 @@
   }
 }
 
-/* One chevron asset serves both directions: it points up while the panel is
-   open (the action is "collapse") and down once collapsed. */
-.maptiler-routing-toggle .maptiler-routing-icon {
-  transform: rotate(180deg);
-  transition: transform var(--maptiler-routing-transition-duration) ease;
-}
-
-.maptiler-routing[data-collapsed] .maptiler-routing-toggle .maptiler-routing-icon {
-  transform: rotate(0deg);
-}
-
 .maptiler-routing-icon[data-icon="chevron-down"] {
   -webkit-mask-image: url([src/style/svg/routing-chevron-down.svg]);
   mask-image: url([src/style/svg/routing-chevron-down.svg]);
@@ -779,6 +803,11 @@
 .maptiler-routing-icon[data-icon="chevron-right"] {
   -webkit-mask-image: url([src/style/svg/routing-chevron-right.svg]);
   mask-image: url([src/style/svg/routing-chevron-right.svg]);
+}
+
+.maptiler-routing-icon[data-icon="close"] {
+  -webkit-mask-image: url([src/style/svg/routing-close.svg]);
+  mask-image: url([src/style/svg/routing-close.svg]);
 }
 
 .maptiler-routing-icon[data-icon="download"] {
