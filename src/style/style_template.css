@@ -891,10 +891,6 @@
   padding: 0;
 }
 
-.maptiler-routing-routes[aria-busy="true"] {
-  opacity: 0.55;
-}
-
 /* RouteOptions: a 24px-padded card, tinted when it is one of the alternates
    and white with a 2px accent border once selected. The border is there in
    both states, transparent when unselected, so selecting one does not shift

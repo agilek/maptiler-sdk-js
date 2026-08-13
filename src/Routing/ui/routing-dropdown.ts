@@ -1,6 +1,12 @@
 import { RC } from "./routing-ui-defaults";
 import { el, icon, setBooleanAttribute, setDataFlag } from "./routing-ui-dom";
 
+/** Gap between a pill and the menu it opens. */
+const MENU_GAP = 4;
+
+/** How close to the edge of the viewport a menu may come. */
+const VIEWPORT_MARGIN = 8;
+
 /**
  * A filter dropdown: a pill that opens a panel below it.
  *
@@ -125,14 +131,31 @@ export class Dropdown {
     // for a fixed child. Rather than guess which ancestor that is, the menu is
     // parked at the origin and measured: wherever it lands is the origin the
     // coordinates below are relative to.
+    const anchor = this.toggle.getBoundingClientRect();
+    this.menu.style.minWidth = `${anchor.width.toString()}px`;
+
     this.menu.style.left = "0px";
     this.menu.style.top = "0px";
     const origin = this.menu.getBoundingClientRect();
+    const { width, height } = origin;
 
-    const anchor = this.toggle.getBoundingClientRect();
-    this.menu.style.left = `${(anchor.left - origin.left).toString()}px`;
-    this.menu.style.top = `${(anchor.bottom + 4 - origin.top).toString()}px`;
-    this.menu.style.minWidth = `${anchor.width.toString()}px`;
+    // the last pill in the row sits against the panel's right edge, and its
+    // menu is wider than it is — left-aligned it would open off-screen, so it
+    // is pushed back just far enough to fit
+    let left = anchor.left;
+    if (left + width > window.innerWidth - VIEWPORT_MARGIN) {
+      left = Math.max(VIEWPORT_MARGIN, window.innerWidth - VIEWPORT_MARGIN - width);
+    }
+
+    // and a tall menu low on the screen opens upwards instead, when there is
+    // more room above the pill than below it
+    let top = anchor.bottom + MENU_GAP;
+    if (top + height > window.innerHeight - VIEWPORT_MARGIN && anchor.top > window.innerHeight - anchor.bottom) {
+      top = Math.max(VIEWPORT_MARGIN, anchor.top - MENU_GAP - height);
+    }
+
+    this.menu.style.left = `${(left - origin.left).toString()}px`;
+    this.menu.style.top = `${(top - origin.top).toString()}px`;
   }
 
   /** Nearest scrollable ancestor — the panel body, in practice. */

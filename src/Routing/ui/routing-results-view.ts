@@ -79,6 +79,21 @@ export class ResultsView {
 
   //#region State
 
+  /**
+   * Matches the number of placeholders to the number of cards they stand in
+   * for: the routes on screen when there are any, the number the request is
+   * expected to return when there are not.
+   */
+  private syncSkeleton(routeCount: number): void {
+    const expected = routeCount > 0 ? routeCount : Math.min(this.context.options.alternates + 1, 3);
+    if (this.skeleton.childElementCount === expected) return;
+
+    this.skeleton.replaceChildren();
+    for (let index = 0; index < expected; index++) {
+      this.skeleton.append(el("div", RC.skeletonCard));
+    }
+  }
+
   /** Records the panel status, which drives the status line and the busy flag. */
   setStatus(status: RoutingPanelStatus, error: Error | null = null): void {
     this.status = status;
@@ -124,9 +139,7 @@ export class ResultsView {
 
     const text =
       this.status === "loading"
-        ? // with cards already on screen the skeleton stays away and this line
-          // is the only sign that they are being replaced
-          routes.length === 0
+        ? routes.length === 0
           ? labels.loading
           : labels.recalculating
         : this.status === "empty"
@@ -135,19 +148,20 @@ export class ResultsView {
             ? labels.needsWaypoints
             : "";
 
-    // the skeleton stands in for the first result, so the "Calculating route…"
-    // line is clipped rather than removed: it is the live region that tells a
-    // screen reader what the placeholders mean
-    const skeletonShowing = this.status === "loading" && routes.length === 0 && !this.isDetailOpen();
+    // the skeleton stands in for the results for as long as a request is in
+    // flight, first one or a later one: a recalculation replaces every card, so
+    // leaving the old ones up — dimmed, or worse, not — offers numbers that are
+    // about to change as though they were the answer. The line stays in the
+    // accessible tree, clipped, as the live region that says which it is.
+    const skeletonShowing = this.status === "loading" && !this.isDetailOpen();
+    this.syncSkeleton(routes.length);
     this.skeleton.hidden = !skeletonShowing;
     setDataFlag(this.statusElement, "silent", skeletonShowing);
 
     this.statusElement.textContent = text;
     this.statusElement.hidden = text === "" || this.isDetailOpen();
 
-    // stale results stay on screen while a new request runs, so the list is
-    // marked busy rather than emptied
-    setBooleanAttribute(this.routesList, "aria-busy", this.status === "loading" && routes.length > 0);
+    setBooleanAttribute(this.routesList, "aria-busy", this.status === "loading");
   }
 
   private renderRoutes(): void {
@@ -199,7 +213,9 @@ export class ResultsView {
     });
 
     this.routesList.replaceChildren(fragment);
-    this.routesList.hidden = this.isDetailOpen();
+    // hidden rather than emptied while a request runs: the cards are kept so
+    // that a failed recalculation can put the previous answer straight back
+    this.routesList.hidden = this.isDetailOpen() || this.status === "loading";
   }
 
   /**

@@ -86,6 +86,12 @@ export class RouteRenderer {
   private attach(): void {
     if (this.destroyed || !this.render.enabled) return;
 
+    // `addSource` and `addLayer` throw while a style is still parsing, and a
+    // route computed right after the map was created — or during a style swap
+    // — lands exactly there. The data is already stored, and `style.load` runs
+    // this again, so waiting costs nothing but a frame.
+    if (!this.map.isStyleLoaded()) return;
+
     if (!this.map.getSource(ROUTE_SOURCE_ID)) {
       this.map.addSource(ROUTE_SOURCE_ID, { type: "geojson", data: this.data });
     }
@@ -130,7 +136,9 @@ export class RouteRenderer {
    * times per style load.
    */
   private reapply = (): void => {
-    if (this.destroyed || !this.attached) return;
+    if (this.destroyed) return;
+    // not `attached`: the first draw may have been the one that had to wait
+    // for the style, in which case nothing has ever been attached
     if (this.map.getSource(ROUTE_SOURCE_ID)) return;
     this.attach();
   };

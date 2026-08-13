@@ -17,12 +17,13 @@
   - `units` is the developer's choice rather than the end user's: `"km"` or `"mi"` fixes it, `"auto"` reads it from `config.unit` or the browser's locale, and `"shown"` is the one value that renders the toggle.
   - A failed request is reported in the panel's own words: `routing.classifyError` reduces the service's message to a `RoutingErrorReason` — `tooFar` (each transport profile has its own distance ceiling), `noRoute`, `unreachable`, `unauthorized`, `rateLimited`, `unavailable` — and the panel shows the matching `labels.errors` string in a card above the results, keeping the original message on the element's `title`.
   - `RoutingController.getLastError()` reports the failure the last computation ended with, so a panel added — or re-added — after the fact starts in the state the session is actually in rather than waiting for a result that already failed.
-  - While the first routes are on their way the results are a shimmering skeleton the size of the cards that will replace them, rather than a line of text. It stops moving under `prefers-reduced-motion`.
+  - Whenever a request is in flight — the first one or a recalculation — the results are shimmering placeholders the size of the cards they stand in for, rather than a line of text over numbers that are about to change. They stop moving under `prefers-reduced-motion`.
   - The panel is customisable through options (which transport modes and filters exist, units, alternates, interactions), CSS custom properties and a documented class-name contract, `labels` and `formatters` for localization, and `renderers.*` hooks that replace one subsection at a time.
   - `routing.directions()` exposes the API on its own, alongside helpers for decoding polylines, joining leg geometry, flattening steps and formatting distances and durations.
   - Enable it with `routing: true` / `routingControl: true` on the map, or per call. Each computed route counts against your MapTiler Cloud API key quota.
 
 ### 🐛 Bug Fixes
+ - Routes computed while a style is still parsing no longer surface MapLibre's "Style is not done loading." as a routing error: the renderer waits for the style it already listens for, which is the same path a style swap takes.
  - Fixes a bug in halo where a mismatch between the layer added to the map and the layer added to the `.halo` field were different instances, causing a runtime error.
 
 ### ⚙️ Others
