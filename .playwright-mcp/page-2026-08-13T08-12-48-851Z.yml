@@ -1,0 +1,127 @@
+- generic [active]:
+  - generic [ref=f91e1]:
+    - generic:
+      - region "Map" [ref=f91e2]
+      - button "Map marker" [ref=f91e3]
+      - button "Map marker" [ref=f91e22]
+    - generic:
+      - region "Directions" [ref=f91e41]:
+        - generic [ref=f91e42]:
+          - heading "Directions" [level=2] [ref=f91e43]
+          - button "Toggle the directions panel" [ref=f91e44] [cursor=pointer]
+        - generic [ref=f91e47]:
+          - radiogroup "Transport mode" [ref=f91e48]:
+            - radio "Car" [checked] [ref=f91e49] [cursor=pointer]
+            - radio "Truck" [ref=f91e52] [cursor=pointer]
+            - radio "Bike" [ref=f91e55] [cursor=pointer]
+            - radio "Walk" [ref=f91e58] [cursor=pointer]
+          - generic [ref=f91e61]:
+            - list [ref=f91e62]:
+              - listitem [ref=f91e63]:
+                - button "Reorder this stop" [ref=f91e64] [cursor=pointer]
+                - combobox "Choose a starting point" [ref=f91e68]: 47.37690, 8.54170
+                - button "Remove this stop" [ref=f91e69] [cursor=pointer]
+              - listitem [ref=f91e71]:
+                - button "Reorder this stop" [ref=f91e72] [cursor=pointer]
+                - combobox "Choose a destination" [ref=f91e76]: 50.23290, 12.87240
+                - button "Remove this stop" [ref=f91e77] [cursor=pointer]
+            - generic [ref=f91e79]:
+              - button "Add a stop" [ref=f91e80] [cursor=pointer]
+              - button "Add a stop from the map" [ref=f91e82] [cursor=pointer]
+          - generic [ref=f91e84]:
+            - combobox "Routes" [ref=f91e86]:
+              - option "Fastest" [selected]
+              - option "Shortest"
+              - option "Balanced"
+            - textbox "Departure" [ref=f91e88]
+            - group "Avoid" [ref=f91e90]:
+              - generic [ref=f91e92]:
+                - checkbox "Tolls" [ref=f91e93]
+                - generic [ref=f91e94]: Tolls
+              - generic [ref=f91e95]:
+                - checkbox "Motorways" [ref=f91e96]
+                - generic [ref=f91e97]: Motorways
+              - generic [ref=f91e98]:
+                - checkbox "Ferries" [ref=f91e99]
+                - generic [ref=f91e100]: Ferries
+            - radiogroup "Distance units" [ref=f91e102]:
+              - radio "km" [checked] [ref=f91e103] [cursor=pointer]
+              - radio "mi" [ref=f91e104] [cursor=pointer]
+          - generic [ref=f91e105]:
+            - status [ref=f91e106]: Calculating the route…
+            - list
+      - generic:
+        - group
+  - generic [ref=f91e107]:
+    - heading "Routing control" [level=1] [ref=f91e108]
+    - paragraph [ref=f91e109]: Every button below reconfigures the panel on the left by rebuilding the control with new options.
+    - generic [ref=f91e110]:
+      - generic [ref=f91e111]: Transport modes
+      - generic [ref=f91e112]:
+        - checkbox "Car" [checked] [ref=f91e113]
+        - text: Car
+      - generic [ref=f91e114]:
+        - checkbox "Truck" [checked] [ref=f91e115]
+        - text: Truck
+      - generic [ref=f91e116]:
+        - checkbox "Bike" [checked] [ref=f91e117]
+        - text: Bike
+      - generic [ref=f91e118]:
+        - checkbox "Walk" [checked] [ref=f91e119]
+        - text: Walk
+      - paragraph [ref=f91e120]: "Tab content:"
+      - button "Icon + name" [ref=f91e121] [cursor=pointer]
+      - button "Icon only" [ref=f91e122] [cursor=pointer]
+      - button "Name only" [ref=f91e123] [cursor=pointer]
+      - button "Nothing" [ref=f91e124] [cursor=pointer]
+      - generic [ref=f91e125]:
+        - checkbox "Show the switcher when only one mode is left" [checked] [ref=f91e126]
+        - text: Show the switcher when only one mode is left
+      - paragraph [ref=f91e127]: Untick every mode, choose "Nothing", or leave a single mode with the box unticked — the switcher leaves no trace behind in every case.
+      - button "Relabelled car only" [ref=f91e128] [cursor=pointer]
+    - generic [ref=f91e129]:
+      - generic [ref=f91e130]: Filters
+      - button "All" [ref=f91e131] [cursor=pointer]
+      - button "Units only" [ref=f91e132] [cursor=pointer]
+      - button "None" [ref=f91e133] [cursor=pointer]
+    - generic [ref=f91e134]:
+      - generic [ref=f91e135]: Interactions
+      - generic [ref=f91e136]:
+        - checkbox "Place search" [checked] [ref=f91e137]
+        - text: Place search
+      - generic [ref=f91e138]:
+        - checkbox "Drag waypoints on map" [checked] [ref=f91e139]
+        - text: Drag waypoints on map
+      - generic [ref=f91e140]:
+        - checkbox "Turn-by-turn" [checked] [ref=f91e141]
+        - text: Turn-by-turn
+      - generic [ref=f91e142]:
+        - checkbox "Collapsible" [checked] [ref=f91e143]
+        - text: Collapsible
+    - generic [ref=f91e144]:
+      - generic [ref=f91e145]: Theme
+      - textbox [ref=f91e146]: "#3174ff"
+      - button "Dark preset" [ref=f91e147] [cursor=pointer]
+      - button "Reset" [ref=f91e148] [cursor=pointer]
+    - generic [ref=f91e149]:
+      - generic [ref=f91e150]: Localization
+      - button "EN" [ref=f91e151] [cursor=pointer]
+      - button "FR" [ref=f91e152] [cursor=pointer]
+      - button "DE" [ref=f91e153] [cursor=pointer]
+      - button "Compact durations" [ref=f91e154] [cursor=pointer]
+    - generic [ref=f91e155]:
+      - generic [ref=f91e156]: Escape hatches
+      - button "Custom route card" [ref=f91e157] [cursor=pointer]
+      - button "Default cards" [ref=f91e158] [cursor=pointer]
+      - button "Unstyled" [ref=f91e159] [cursor=pointer]
+    - generic [ref=f91e160]:
+      - generic [ref=f91e161]: Programmatic
+      - button "Set waypoints" [ref=f91e162] [cursor=pointer]
+      - button "Select route 2" [ref=f91e163] [cursor=pointer]
+      - button "Open turn-by-turn" [ref=f91e164] [cursor=pointer]
+      - button "Collapse" [ref=f91e165] [cursor=pointer]
+    - generic [ref=f91e166]:
+      - generic [ref=f91e167]: Style
+      - button "Streets" [ref=f91e168] [cursor=pointer]
+      - button "Dark" [ref=f91e169] [cursor=pointer]
+    - generic [ref=f91e170]: Events

@@ -137,7 +137,10 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
     resultsView.setStatus(this.initialStatus());
     this.alignProfileWithModes();
 
-    this.root = this.buildShell([filtersView.element, waypointsView.element, resultsView.element]);
+    // the design's stacking order (RoutingPanel/Results in Map Controls UI):
+    // transport switcher, then the destination inputs, then the filters, then
+    // the results
+    this.root = this.buildShell([filtersView.modesElement, waypointsView.element, filtersView.filtersElement, resultsView.element]);
     this.applyTheme();
     this.wirePanelEvents();
     this.wireRoutingEvents();

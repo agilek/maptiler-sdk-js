@@ -5,6 +5,26 @@ import { PROFILE_ICONS, RC } from "./routing-ui-defaults";
 import { button, el, icon, setBooleanAttribute } from "./routing-ui-dom";
 
 /**
+ * Takes a section out of the layout, leaving its placeholder behind so it can
+ * be put back in the same position.
+ *
+ * @remarks
+ * These check for a parent rather than `isConnected`: the first render happens
+ * inside `onAdd`, before MapLibre has put the panel in the document, so
+ * `isConnected` is still `false` for everything and a swap would be skipped.
+ */
+function hide(element: HTMLElement, placeholder: Comment): void {
+  if (!element.parentNode) return;
+  element.replaceWith(placeholder);
+}
+
+/** Puts a section back where its placeholder is sitting. */
+function show(element: HTMLElement, placeholder: Comment): void {
+  if (element.parentNode || !placeholder.parentNode) return;
+  placeholder.replaceWith(element);
+}
+
+/**
  * The transport switcher and the filter row.
  *
  * Native form controls are used throughout — a `select` for the route
@@ -14,12 +34,25 @@ import { button, el, icon, setBooleanAttribute } from "./routing-ui-dom";
  * panel.
  */
 export class FiltersView {
-  /** Root element of the view. */
-  readonly element: HTMLElement;
+  /**
+   * The transport switcher, and the filter row.
+   *
+   * They are two separate roots rather than one wrapper because the design
+   * puts the waypoint inputs between them: switcher, inputs, filters, results.
+   * The control places each where it belongs.
+   */
+  readonly modesElement: HTMLElement;
+  readonly filtersElement: HTMLElement;
 
   private readonly context: RoutingPanelContext;
-  private readonly modesElement: HTMLElement;
-  private readonly filtersElement: HTMLElement;
+
+  /**
+   * Stand-ins left in the DOM when a section is removed, so it can be put back
+   * in the right place later. A section is removed rather than hidden — an
+   * empty flex row would still paint its background and margin.
+   */
+  private readonly modesPlaceholder = document.createComment("maptiler-routing-modes");
+  private readonly filtersPlaceholder = document.createComment("maptiler-routing-filters");
 
   /** Avoidances are held here because the API only receives the ones switched on. */
   private avoidances: RoutingAvoidances = {};
@@ -28,13 +61,11 @@ export class FiltersView {
   constructor(context: RoutingPanelContext) {
     this.context = context;
 
-    this.element = el("div");
     this.modesElement = el("div", RC.modes);
     this.modesElement.setAttribute("role", "radiogroup");
     this.modesElement.setAttribute("aria-label", context.options.labels.transportMode);
 
     this.filtersElement = el("div", RC.filters);
-    this.element.append(this.modesElement, this.filtersElement);
   }
 
   //#region Transport modes
@@ -67,18 +98,18 @@ export class FiltersView {
 
     const replacement = renderers.transportModes?.({ modes, selected, control: this.context.control, labels, formatters });
     if (replacement) {
-      this.attachModes();
+      show(this.modesElement, this.modesPlaceholder);
       this.modesElement.replaceChildren(replacement);
       return;
     }
 
     if (!this.shouldRenderModes()) {
       this.modesElement.replaceChildren();
-      this.modesElement.remove();
+      hide(this.modesElement, this.modesPlaceholder);
       return;
     }
 
-    this.attachModes();
+    show(this.modesElement, this.modesPlaceholder);
     const fragment = document.createDocumentFragment();
 
     for (const mode of modes) {
@@ -117,12 +148,6 @@ export class FiltersView {
     }
 
     this.modesElement.replaceChildren(fragment);
-  }
-
-  /** Puts the switcher back at the top of the view after it was removed. */
-  private attachModes(): void {
-    if (this.modesElement.isConnected) return;
-    this.element.prepend(this.modesElement);
   }
 
   /** Arrow keys move the selection, which is the radio-group convention. */
@@ -172,11 +197,11 @@ export class FiltersView {
     // attribute, which is a UA-stylesheet rule)
     if (fragment.childNodes.length === 0) {
       this.filtersElement.replaceChildren();
-      this.filtersElement.remove();
+      hide(this.filtersElement, this.filtersPlaceholder);
       return;
     }
 
-    if (!this.filtersElement.isConnected) this.element.append(this.filtersElement);
+    show(this.filtersElement, this.filtersPlaceholder);
     this.filtersElement.replaceChildren(fragment);
   }
 
