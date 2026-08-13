@@ -643,13 +643,14 @@
 
 /* Filters */
 
+/* RouteFilters: whatever the profile puts in the row, the pills share the
+   panel's full width between them — in the design each row's widths add up to
+   exactly that, so nothing trails off short of the edge. */
 .maptiler-routing-filters {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--maptiler-routing-gap);
-  padding-bottom: var(--maptiler-routing-gap);
-  border-bottom: 1px solid var(--maptiler-routing-border-color);
   margin-bottom: var(--maptiler-routing-gap);
 }
 
@@ -657,12 +658,17 @@
    the value on the left and a chevron on the right. */
 .maptiler-routing-dropdown {
   position: relative;
+  /* the basis is the pill's own content, so a longer value still takes more of
+     the row than a shorter one, as the design has it */
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .maptiler-routing button.maptiler-routing-dropdown-toggle {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
   height: 42px;
   padding: 0 12px;
   border: 1px solid var(--maptiler-routing-border-color);
@@ -675,6 +681,13 @@
 
 .maptiler-routing button.maptiler-routing-dropdown-toggle:hover {
   background: var(--maptiler-routing-field-hover);
+}
+
+.maptiler-routing-dropdown-label {
+  /* the pills share a fixed width, so a long value is trimmed rather than
+     pushing the chevron out of its pill */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .maptiler-routing-dropdown-toggle .maptiler-routing-icon {
