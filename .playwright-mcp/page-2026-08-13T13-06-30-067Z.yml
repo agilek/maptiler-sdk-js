@@ -1,0 +1,39 @@
+- generic [ref=f248e1]:
+  - generic:
+    - region "Map" [ref=f248e2]
+    - button "Map marker" [ref=f248e3]
+    - button "Map marker" [ref=f248e22]
+  - generic:
+    - generic [ref=f248e41]:
+      - button "Close the directions panel" [expanded] [ref=f248e42] [cursor=pointer]
+      - region "Directions" [ref=f248e44]:
+        - generic [ref=f248e46]:
+          - radiogroup "Transport mode" [ref=f248e47]:
+            - radio "Car" [checked] [ref=f248e48] [cursor=pointer]
+            - radio "Truck" [ref=f248e51] [cursor=pointer]
+            - radio "Bike" [ref=f248e54] [cursor=pointer]
+            - radio "Walk" [ref=f248e57] [cursor=pointer]
+          - generic [ref=f248e60]:
+            - list [ref=f248e61]:
+              - listitem [ref=f248e62]:
+                - button "Reorder this stop" [ref=f248e63] [cursor=pointer]
+                - generic [ref=f248e65]:
+                  - combobox "From" [ref=f248e67]: 47.37690, 8.54170
+                  - button "Clear this field" [ref=f248e68] [cursor=pointer]
+                - button "Remove this stop" [ref=f248e70] [cursor=pointer]
+              - listitem [ref=f248e72]:
+                - button "Reorder this stop" [ref=f248e73] [cursor=pointer]
+                - generic [ref=f248e75]:
+                  - combobox "To" [ref=f248e77]: 50.23290, 12.87240
+                  - button "Clear this field" [ref=f248e78] [cursor=pointer]
+                - button "Remove this stop" [ref=f248e80] [cursor=pointer]
+            - button "Add a stop" [ref=f248e83] [cursor=pointer]
+          - generic [ref=f248e85]:
+            - button "Routes" [ref=f248e87] [cursor=pointer]:
+              - generic [ref=f248e88]: Fastest
+            - button "Departure" [ref=f248e91] [cursor=pointer]:
+              - generic [ref=f248e92]: Now
+            - button "Avoid" [ref=f248e95] [cursor=pointer]
+          - status [ref=f248e99]: Calculating the route…
+    - generic:
+      - group

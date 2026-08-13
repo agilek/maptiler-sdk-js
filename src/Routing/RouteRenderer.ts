@@ -86,25 +86,31 @@ export class RouteRenderer {
   private attach(): void {
     if (this.destroyed || !this.render.enabled) return;
 
-    // `addSource` and `addLayer` throw while a style is still parsing, and a
-    // route computed right after the map was created — or during a style swap
-    // — lands exactly there. The data is already stored, and `style.load` runs
-    // this again, so waiting costs nothing but a frame.
-    if (!this.map.isStyleLoaded()) return;
+    try {
+      if (!this.map.getSource(ROUTE_SOURCE_ID)) {
+        this.map.addSource(ROUTE_SOURCE_ID, { type: "geojson", data: this.data });
+      }
 
-    if (!this.map.getSource(ROUTE_SOURCE_ID)) {
-      this.map.addSource(ROUTE_SOURCE_ID, { type: "geojson", data: this.data });
-    }
+      // resolved per attachment: the new style has different layers, so an id
+      // remembered from the previous one would be stale
+      const beforeId = this.resolveBeforeId();
 
-    // resolved per attachment: the new style has different layers, so an id
-    // remembered from the previous one would be stale
-    const beforeId = this.resolveBeforeId();
-
-    for (const layer of buildRouteLayers(this.render)) {
-      if (this.map.getLayer(layer.id)) continue;
-      // MapLibre throws when `beforeId` names a layer that does not exist
-      if (beforeId) this.map.addLayer(layer, beforeId);
-      else this.map.addLayer(layer);
+      for (const layer of buildRouteLayers(this.render)) {
+        if (this.map.getLayer(layer.id)) continue;
+        // MapLibre throws when `beforeId` names a layer that does not exist
+        if (beforeId) this.map.addLayer(layer, beforeId);
+        else this.map.addLayer(layer);
+      }
+    } catch {
+      // A route computed before the style has finished parsing lands here:
+      // MapLibre answers "Style is not done loading". The data is kept, so the
+      // next `styledata` draws it — which is the same path a style swap takes.
+      // Swallowed rather than propagated: this runs inside the routing
+      // promise, and a drawing hiccup is not a failed request.
+      // `once` is typed as returning a promise when it is called without a
+      // handler; with one it returns the map, so there is nothing to await
+      void this.map.once("styledata", this.reapply);
+      return;
     }
 
     if (!this.attached) {
@@ -138,8 +144,10 @@ export class RouteRenderer {
   private reapply = (): void => {
     if (this.destroyed) return;
     // not `attached`: the first draw may have been the one that had to wait
-    // for the style, in which case nothing has ever been attached
-    if (this.map.getSource(ROUTE_SOURCE_ID)) return;
+    // for the style, in which case nothing has ever been attached. Both the
+    // source and the layers are checked, since an attach interrupted by a
+    // style still parsing can leave one without the other.
+    if (this.map.getSource(ROUTE_SOURCE_ID) && ROUTE_LAYER_IDS.every((id) => this.map.getLayer(id))) return;
     this.attach();
   };
 

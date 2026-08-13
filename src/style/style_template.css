@@ -761,6 +761,56 @@
   font: inherit;
 }
 
+/* DropdownDeparture: a caret at each end of the row, the value in the middle
+   behind its icon. A caret is muted when the step it would take is not
+   available — a departure cannot move into the past. */
+.maptiler-routing-dropdown-stepper-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 auto;
+}
+
+.maptiler-routing-dropdown-stepper-value .maptiler-routing-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--maptiler-routing-muted-color);
+}
+
+.maptiler-routing button.maptiler-routing-dropdown-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--maptiler-routing-accent);
+}
+
+.maptiler-routing-dropdown-step .maptiler-routing-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.maptiler-routing button.maptiler-routing-dropdown-step:disabled {
+  color: var(--maptiler-routing-muted-color);
+}
+
+/* The way back to "Now", under the two rows. */
+.maptiler-routing button.maptiler-routing-dropdown-reset {
+  display: block;
+  width: calc(100% - 4px);
+  height: 32px;
+  margin: 0 2px 10px;
+  border-radius: 6px;
+  color: var(--maptiler-routing-accent);
+  font-size: 14px;
+}
+
+.maptiler-routing button.maptiler-routing-dropdown-reset:hover {
+  background: var(--maptiler-routing-surface-alt);
+}
+
 .maptiler-routing-dropdown-note {
   max-width: 200px;
   margin: 0;
@@ -1080,9 +1130,9 @@
 
    Drawn on the map, not inside the panel, so it carries its own colours
    rather than inheriting the panel's custom properties — a map has no panel
-   in the headless case. The values follow the Map Controls UI design
-   (RouteTime): 4px radius, 2px white border, 13px semi-bold white text, and a
-   lighter blue for the alternates. */
+   in the headless case. RouteTime: 2px/6px padding, a 4px radius, a 2px white
+   border, 13px semibold white on the accent, a lighter blue for the
+   alternates, and no shadow — the design has one, switched off. */
 
 .maptiler-routing-route-label {
   --maptiler-routing-label-selected: #3170fe;
@@ -1099,7 +1149,6 @@
   line-height: 18px;
   white-space: nowrap;
   cursor: pointer;
-  box-shadow: 0 4px 4px rgb(0 0 0 / 15%);
   /* the alternates sit under the selected badge, which is the one being read */
   z-index: 1;
 }
@@ -1128,6 +1177,21 @@
 .maptiler-routing-icon[data-icon="add-stop"] {
   -webkit-mask-image: url([src/style/svg/routing-add-stop.svg]);
   mask-image: url([src/style/svg/routing-add-stop.svg]);
+}
+
+.maptiler-routing-icon[data-icon="calendar"] {
+  -webkit-mask-image: url([src/style/svg/routing-calendar.svg]);
+  mask-image: url([src/style/svg/routing-calendar.svg]);
+}
+
+.maptiler-routing-icon[data-icon="caret-left"] {
+  -webkit-mask-image: url([src/style/svg/routing-caret-left.svg]);
+  mask-image: url([src/style/svg/routing-caret-left.svg]);
+}
+
+.maptiler-routing-icon[data-icon="caret-right"] {
+  -webkit-mask-image: url([src/style/svg/routing-caret-right.svg]);
+  mask-image: url([src/style/svg/routing-caret-right.svg]);
 }
 
 .maptiler-routing-icon[data-icon="chevron-down"] {

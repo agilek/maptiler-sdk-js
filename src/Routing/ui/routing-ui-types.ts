@@ -163,6 +163,18 @@ export type RoutingControlLabels = {
   departure?: string;
   /** The "leave now" option of the departure field. */
   departNow?: string;
+  /** The day row of the departure picker, while it is set to today. */
+  today?: string;
+  /** The day row of the departure picker, while it is set to the next day. */
+  tomorrow?: string;
+  /** Accessible name of the departure picker's step-back-a-day control. */
+  previousDay?: string;
+  /** Accessible name of the departure picker's step-forward-a-day control. */
+  nextDay?: string;
+  /** Accessible name of the departure picker's earlier-time control. */
+  earlier?: string;
+  /** Accessible name of the departure picker's later-time control. */
+  later?: string;
   /** Closed-state label of the vehicle menu. */
   vehicle?: string;
   /** Labels of the vehicle fields, all in metric units. */

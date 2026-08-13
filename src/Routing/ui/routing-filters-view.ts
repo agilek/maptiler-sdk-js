@@ -1,6 +1,6 @@
 import { supportsAvoidances, supportsBicycleType, supportsRouteMode, supportsTravelSpeed, supportsVehicleOptions } from "../routing-constants";
 import type { BicycleRouteType, CarRouteMode, RoutingAvoidances, RoutingProfile, RoutingUnits } from "../types";
-import { Dropdown, choiceRow, menuNote, menuRow, numberField, switchField } from "./routing-dropdown";
+import { Dropdown, choiceRow, menuNote, menuRow, numberField, stepperRow, switchField } from "./routing-dropdown";
 import type { RoutingPanelContext } from "./routing-ui-context";
 import { PROFILE_ICONS, RC } from "./routing-ui-defaults";
 import { el, icon, setBooleanAttribute } from "./routing-ui-dom";
@@ -22,6 +22,33 @@ const BICYCLE_TYPES: readonly BicycleRouteType[] = ["road", "gravel", "mountain"
 
 /** Makes each menu's radio group unique, so two panels never share one. */
 let groupSequence = 0;
+
+/** How far one press of the time row moves the departure, in minutes. */
+const DEPARTURE_STEP_MINUTES = 15;
+
+const MINUTES_PER_DAY = 24 * 60;
+
+/** Midnight of the day a moment falls in, for counting whole days between two. */
+function startOfDay(value: Date): Date {
+  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+}
+
+/** The next whole step at or after a moment. */
+function roundUpToStep(value: Date, stepMinutes: number): Date {
+  const step = stepMinutes * 60_000;
+  return new Date(Math.ceil(value.getTime() / step) * step);
+}
+
+/**
+ * A local `YYYY-MM-DDTHH:mm` stamp.
+ *
+ * `toISOString` would convert to UTC, and the service reads the departure in
+ * the route's own timezone — 18:30 has to stay 18:30.
+ */
+function toLocalISOString(value: Date): string {
+  const pad = (part: number) => part.toString().padStart(2, "0");
+  return `${value.getFullYear().toString()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}`;
+}
 
 /**
  * Takes a section out of the layout, leaving its placeholder behind so it can
@@ -84,6 +111,12 @@ export class FiltersView {
   private vehicle: { weight?: number; height?: number; length?: number; axleLoad?: number; topSpeed?: number; hazmat?: boolean } = {};
   private bicycleType: BicycleRouteType | undefined = undefined;
   private travelSpeed: number | undefined = undefined;
+
+  /** Departure moment, or `null` for leaving now. */
+  private departure: Date | null = null;
+
+  /** Redraws the departure menu after a step. Set while that menu exists. */
+  private refreshDeparture?: () => void;
 
   /** Live dropdowns, kept so their document listeners can be dropped. */
   private dropdowns: Dropdown[] = [];
@@ -311,39 +344,107 @@ export class FiltersView {
   }
 
   /**
-   * Departure: "Now", or a moment picked in the field the menu holds.
+   * Departure: a day and a time, each stepped a notch at a time, plus the way
+   * back to leaving now.
    *
-   * The two are one control rather than two filters — the field's own empty
-   * state is what "now" means to the API, so clearing it and choosing "Now" are
-   * the same action.
+   * The design (DropdownDeparture) has no calendar and no text entry: two rows
+   * with a caret on each side, and "Now" underneath. Stepping is enough for
+   * what this picker is for — a departure later today, or tomorrow morning —
+   * and it needs no locale-specific parsing.
    */
   private buildDepartureFilter(): HTMLElement {
     const { labels } = this.context.options;
-    const dropdown = this.createDropdown("departure", labels.departNow, labels.departure);
+    const dropdown = this.createDropdown("departure", this.departureLabel(), labels.departure);
 
-    const input = el("input", RC.dropdownDate);
-    input.type = "datetime-local";
-    input.setAttribute("aria-label", labels.departure);
+    const dayRow = stepperRow(
+      "calendar",
+      () => this.formatDepartureDay(),
+      labels.previousDay,
+      labels.nextDay,
+      (direction) => {
+        this.stepDeparture(direction * MINUTES_PER_DAY);
+      },
+      (direction) => this.canStepDeparture(direction * MINUTES_PER_DAY),
+    );
 
-    const now = el("input");
-    now.type = "radio";
-    now.name = `maptiler-routing-departure-${(++groupSequence).toString()}`;
-    now.checked = true;
-    now.addEventListener("change", () => {
-      input.value = "";
+    const timeRow = stepperRow(
+      "clock",
+      () => this.formatDepartureTime(),
+      labels.earlier,
+      labels.later,
+      (direction) => {
+        this.stepDeparture(direction * DEPARTURE_STEP_MINUTES);
+      },
+      (direction) => this.canStepDeparture(direction * DEPARTURE_STEP_MINUTES),
+    );
+
+    const now = el("button", RC.dropdownReset);
+    now.type = "button";
+    now.textContent = labels.departNow;
+    now.addEventListener("click", () => {
+      this.departure = null;
       dropdown.setLabel(labels.departNow);
       dropdown.close();
       this.context.routing.setDepartureTime(null);
     });
 
-    input.addEventListener("change", () => {
-      now.checked = input.value === "";
-      dropdown.setLabel(input.value === "" ? labels.departNow : input.value.replace("T", " "));
-      this.context.routing.setDepartureTime(input.value ? input.value : null);
-    });
+    this.refreshDeparture = () => {
+      dayRow.refresh();
+      timeRow.refresh();
+      dropdown.setLabel(this.departureLabel());
+    };
 
-    dropdown.menu.append(menuRow(labels.departNow, now), menuRow(labels.departure, input));
+    dropdown.menu.append(dayRow.element, timeRow.element, now);
+    this.refreshDeparture();
     return dropdown.element;
+  }
+
+  /**
+   * Moves the departure by a number of minutes, starting from the next whole
+   * step after now — so the first press on either row leaves the past behind
+   * rather than proposing a departure that has already gone.
+   */
+  private stepDeparture(minutes: number): void {
+    const base = this.departure ?? roundUpToStep(new Date(), DEPARTURE_STEP_MINUTES);
+    const next = new Date(base.getTime() + minutes * 60_000);
+
+    // a departure in the past is not a request the service can answer
+    this.departure = next.getTime() < Date.now() ? roundUpToStep(new Date(), DEPARTURE_STEP_MINUTES) : next;
+
+    this.refreshDeparture?.();
+    this.context.routing.setDepartureTime(toLocalISOString(this.departure));
+  }
+
+  /** Whether a step of this many minutes would land in the past. */
+  private canStepDeparture(minutes: number): boolean {
+    if (minutes > 0) return true;
+    const base = this.departure ?? roundUpToStep(new Date(), DEPARTURE_STEP_MINUTES);
+    return base.getTime() + minutes * 60_000 >= Date.now();
+  }
+
+  /** The pill's text: "Now", or the day and time it is set to. */
+  private departureLabel(): string {
+    const { labels } = this.context.options;
+    if (!this.departure) return labels.departNow;
+    return `${this.formatDepartureDay()} ${this.formatDepartureTime()}`;
+  }
+
+  /** "Today", "Tomorrow", or a short date once it is further out. */
+  private formatDepartureDay(): string {
+    const { labels, language } = this.context.options;
+    if (!this.departure) return labels.today;
+
+    const days = Math.round((startOfDay(this.departure).getTime() - startOfDay(new Date()).getTime()) / (MINUTES_PER_DAY * 60_000));
+    if (days === 0) return labels.today;
+    if (days === 1) return labels.tomorrow;
+
+    return this.departure.toLocaleDateString(language, { day: "numeric", month: "short" });
+  }
+
+  private formatDepartureTime(): string {
+    const { language } = this.context.options;
+    const value = this.departure ?? roundUpToStep(new Date(), DEPARTURE_STEP_MINUTES);
+    return value.toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" });
   }
 
   /** Avoidances: several switches at once, so the pill keeps its own name. */

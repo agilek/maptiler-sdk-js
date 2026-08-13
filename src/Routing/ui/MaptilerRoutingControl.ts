@@ -3,6 +3,7 @@ import type { IControl, MapMouseEvent } from "maplibre-gl";
 import type { Map as SDKMap } from "../../Map";
 import { DOMremove } from "../../utils/dom";
 import type { RoutingController } from "../RoutingController";
+import type { RoutingConfigChange } from "../types";
 import { FiltersView } from "./routing-filters-view";
 import { RoutingGeocoder } from "./routing-geocoder";
 import { ResultsView } from "./routing-results-view";
@@ -383,10 +384,15 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
       this.queue?.schedule(REGION.RESULTS);
     };
     const onSelect = () => this.queue?.schedule(REGION.RESULTS);
-    const onConfig = () => {
-      // the profile decides which filters apply and which tab is selected, and
-      // the units change every distance already on screen
-      this.queue?.schedule(REGION.FILTERS);
+    const onConfig = (event: { change: RoutingConfigChange }) => {
+      // The profile decides which filters apply and which tab is selected, and
+      // the unit is printed on its own toggle — those two rebuild the row.
+      //
+      // Nothing else does: the values the row itself just set are already on
+      // screen, and rebuilding for them would tear down the menu the user is
+      // still working in, one press into stepping a departure or ticking a
+      // second road type to avoid.
+      if (event.change === "profile" || event.change === "units") this.queue?.schedule(REGION.FILTERS);
       this.queue?.schedule(REGION.RESULTS);
     };
     const onError = (event: { error: Error }) => {

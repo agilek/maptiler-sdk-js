@@ -14,6 +14,7 @@
   - The panel's styles are isolated from the host page: a global `button { margin }` or similar no longer disturbs its layout.
   - Every filter is the design's dropdown: a bordered pill showing its current value, opening a menu of 42px rows — a value and its unit for the truck's dimensions and the travel speed, a switch for each avoidance and for hazardous goods, a plain list for the route preference and the bicycle type.
   - The filter row belongs to the transport mode: the car keeps the route preference and the avoidances, the truck swaps the preference for vehicle dimensions and a hazardous-goods switch, and the bicycle and the pedestrian get a bicycle type and a travel speed. Each filter is the design's dropdown, showing its current value when closed.
+  - The departure picker follows DropdownDeparture: a day and a time, each stepped with a caret on either side, and a way back to leaving now. A caret that would step into the past is muted, as the design draws it.
   - `units` is the developer's choice rather than the end user's: `"km"` or `"mi"` fixes it, `"auto"` reads it from `config.unit` or the browser's locale, and `"shown"` is the one value that renders the toggle.
   - A failed request is reported in the panel's own words: `routing.classifyError` reduces the service's message to a `RoutingErrorReason` — `tooFar` (each transport profile has its own distance ceiling), `noRoute`, `unreachable`, `unauthorized`, `rateLimited`, `unavailable` — and the panel shows the matching `labels.errors` string in a card above the results, keeping the original message on the element's `title`.
   - `RoutingController.getLastError()` reports the failure the last computation ended with, so a panel added — or re-added — after the fact starts in the state the session is actually in rather than waiting for a result that already failed.
@@ -23,7 +24,7 @@
   - Enable it with `routing: true` / `routingControl: true` on the map, or per call. Each computed route counts against your MapTiler Cloud API key quota.
 
 ### 🐛 Bug Fixes
- - Routes computed while a style is still parsing no longer surface MapLibre's "Style is not done loading." as a routing error: the renderer waits for the style it already listens for, which is the same path a style swap takes.
+ - Routes computed while a style is still parsing are drawn once it is ready, instead of not at all — which is what a first page load usually is. The failure is no longer reported as a routing error either.
  - Fixes a bug in halo where a mismatch between the layer added to the map and the layer added to the `.halo` field were different instances, causing a runtime error.
 
 ### ⚙️ Others

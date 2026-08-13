@@ -217,6 +217,57 @@ export function switchField(checked: boolean, onChange: (checked: boolean) => vo
 }
 
 /**
+ * A row that steps a value: a caret on each side of an icon and its value.
+ *
+ * The design's departure picker is two of these — a day and a time — rather
+ * than a calendar or a text field, so this is the only shape either needs.
+ *
+ * @param onStep - Called with `-1` or `1`.
+ * @returns The row, and the way to redraw its value after a step.
+ */
+export function stepperRow(
+  iconId: string,
+  value: () => string,
+  previousLabel: string,
+  nextLabel: string,
+  onStep: (direction: -1 | 1) => void,
+  canStep: (direction: -1 | 1) => boolean = () => true,
+): { element: HTMLElement; refresh: () => void } {
+  const element = el("div", RC.dropdownRow);
+
+  const text = el("span", undefined, value());
+  const middle = el("span", RC.dropdownStepperValue);
+  middle.append(icon(iconId), text);
+
+  const caret = (direction: -1 | 1, label: string) => {
+    const button = el("button", RC.dropdownStep);
+    button.type = "button";
+    button.append(icon(direction === -1 ? "caret-left" : "caret-right"));
+    button.setAttribute("aria-label", label);
+    button.title = label;
+    button.addEventListener("click", () => {
+      onStep(direction);
+    });
+    return button;
+  };
+
+  const previous = caret(-1, previousLabel);
+  const next = caret(1, nextLabel);
+  element.append(previous, middle, next);
+
+  return {
+    element,
+    refresh: () => {
+      text.textContent = value();
+      // the design mutes a caret whose step is not available, which for a
+      // departure is any step back into the past
+      previous.disabled = !canStep(-1);
+      next.disabled = !canStep(1);
+    },
+  };
+}
+
+/**
  * A choice row: the label alone, with the radio kept for keyboard and
  * assistive-technology use but drawn by the row's selected state instead.
  */
