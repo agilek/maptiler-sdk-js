@@ -39,9 +39,13 @@ wireEvents(control);
  * the computed routes are still there when the new panel renders.
  */
 function apply(patch: Partial<MaptilerRoutingControlOptions>) {
+  // a rebuilt control starts from its options, so without this every change
+  // would shut the panel and hide the very thing being demonstrated
+  const wasOpen = control.isOpen();
+
   options = { ...options, ...patch };
   map.removeControl(control);
-  control = new MaptilerRoutingControl(options);
+  control = new MaptilerRoutingControl({ ...options, open: patch.open ?? wasOpen });
   map.addControl(control, "top-right");
   wireEvents(control);
   log(`options: ${Object.keys(patch).join(", ")}`);
