@@ -569,9 +569,22 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
    * into the map, away from the controls.
    */
   private applyLayoutOffset(): void {
-    const container = this.root?.parentElement;
     const panel = this.panel;
-    if (!container || !panel || !this.options.launcher) return;
+    if (!this.root || !panel || !this.options.launcher) return;
+
+    const container = this.root.parentElement;
+    if (!container) {
+      // MapLibre appends the control's element to the corner column after
+      // `onAdd` returns, so on the first pass — and on every re-add, which is
+      // what a style reload does — there is nothing to measure against yet.
+      // Retrying on the next frame is what keeps an already-open panel on
+      // screen instead of hanging it off the right edge. `this.root` is
+      // cleared by `onRemove`, which is what stops the retry.
+      requestAnimationFrame(() => {
+        this.applyLayoutOffset();
+      });
+      return;
+    }
 
     const rightCorner = container.classList.contains("maplibregl-ctrl-top-right") || container.classList.contains("maplibregl-ctrl-bottom-right");
 

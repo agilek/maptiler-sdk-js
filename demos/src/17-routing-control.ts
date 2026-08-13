@@ -146,6 +146,10 @@ document.querySelectorAll<HTMLButtonElement>("[data-theme]").forEach((button) =>
         borderColor: "#2b3446",
         accent: "#6f9bff",
         accentContrast: "#0b0e14",
+        fieldHover: "#1b2230",
+        pinColor: "#41527a",
+        skeletonColor: "#1b2230",
+        skeletonHighlight: "#232c3d",
       },
     });
   });

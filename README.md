@@ -2141,6 +2141,10 @@ A dark panel, copy-pasteable:
   --maptiler-routing-border-color: #2b3446;
   --maptiler-routing-accent: #6f9bff;
   --maptiler-routing-accent-contrast: #0b0e14;
+  --maptiler-routing-field-hover: #1b2230;
+  --maptiler-routing-pin-color: #41527a;
+  --maptiler-routing-skeleton-color: #1b2230;
+  --maptiler-routing-skeleton-highlight: #232c3d;
 }
 ```
 
