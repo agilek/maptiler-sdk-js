@@ -84,10 +84,12 @@ export const RC = Object.freeze({
 
   detailTop: "maptiler-routing-detail-top",
   detailBack: "maptiler-routing-detail-back",
+  detailTitle: "maptiler-routing-detail-title",
   detailSummary: "maptiler-routing-detail-summary",
   steps: "maptiler-routing-steps",
   step: "maptiler-routing-step",
   stepIcon: "maptiler-routing-step-icon",
+  stepLines: "maptiler-routing-step-lines",
   stepText: "maptiler-routing-step-text",
   stepDistance: "maptiler-routing-step-distance",
 
@@ -129,6 +131,7 @@ export const CSS_VARS: Readonly<Record<keyof RoutingControlTheme, string>> = Obj
   fontFamily: "--maptiler-routing-font-family",
   shadow: "--maptiler-routing-shadow",
   listShadow: "--maptiler-routing-list-shadow",
+  stepDivider: "--maptiler-routing-step-divider",
 });
 
 //#endregion
@@ -251,6 +254,7 @@ export const DEFAULT_LABELS: Required<RoutingControlLabels> = Object.freeze({
     unknown: "The routing request failed.",
   },
   backToRoutes: "Back to the routes",
+  routeOverview: "Route overview",
   showDetail: "Show the turn-by-turn directions",
   noSteps: "This route came back without step details.",
   eta: "ETA",

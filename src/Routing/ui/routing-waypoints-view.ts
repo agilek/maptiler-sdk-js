@@ -139,6 +139,56 @@ export class WaypointsView {
     });
   }
 
+  /**
+   * Draws the line the row would land on.
+   *
+   * Which side of the row it lands on depends on where the pointer is in it:
+   * above the middle means before this row, below means after. Without it a
+   * drag says nothing about where the row is going.
+   */
+  private markDropTarget(row: WaypointRow, event: DragEvent): void {
+    const rect = row.element.getBoundingClientRect();
+    const side = event.clientY > rect.top + rect.height / 2 ? "after" : "before";
+
+    for (const other of this.rows.values()) {
+      if (other === row) continue;
+      delete other.element.dataset.drop;
+    }
+
+    // the row being dragged is where it already is; a line on it means nothing
+    if (this.dragIndex !== null && this.indexOf(this.idOf(row)) === this.dragIndex) {
+      delete row.element.dataset.drop;
+      return;
+    }
+
+    row.element.dataset.drop = side;
+  }
+
+  /** Removes every drop line. */
+  private clearDropTargets(): void {
+    for (const row of this.rows.values()) delete row.element.dataset.drop;
+  }
+
+  /** Where the dragged row lands, given which half of the target it was dropped on. */
+  private dropIndex(row: WaypointRow, event: DragEvent, id: string): number {
+    const rect = row.element.getBoundingClientRect();
+    const target = this.indexOf(id);
+    const after = event.clientY > rect.top + rect.height / 2;
+
+    // dropping below a row that sits above the dragged one puts it in that
+    // row's place; the indices either side of the gap are the same move
+    if (!after) return this.dragIndex !== null && this.dragIndex < target ? Math.max(target - 1, 0) : target;
+    return this.dragIndex !== null && this.dragIndex > target ? target + 1 : target;
+  }
+
+  /** The waypoint id a row belongs to. */
+  private idOf(row: WaypointRow): string {
+    for (const [id, candidate] of this.rows) {
+      if (candidate === row) return id;
+    }
+    return "";
+  }
+
   /** Shows the in-field clear button only when there is something to clear. */
   private syncClearButton(row: WaypointRow): void {
     const clear = row.element.querySelector<HTMLButtonElement>(`.${RC.waypointClear}`);
@@ -301,23 +351,32 @@ export class WaypointsView {
 
       const transfer = (event as DragEvent).dataTransfer;
       transfer?.setData("text/plain", id);
+      // a move, not a copy: without this the pointer carries a plus sign
+      if (transfer) transfer.effectAllowed = "move";
       if (transfer) this.setRowDragImage(transfer, row, event as DragEvent);
     });
 
     handle?.addEventListener("dragend", () => {
       this.dragIndex = null;
       setDataFlag(row.element, "dragging", false);
+      this.clearDropTargets();
     });
 
     row.element.addEventListener("dragover", (event) => {
       if (this.dragIndex === null) return;
       event.preventDefault();
+      const transfer = (event as DragEvent).dataTransfer;
+      if (transfer) transfer.dropEffect = "move";
+      this.markDropTarget(row, event as DragEvent);
     });
 
     row.element.addEventListener("drop", (event) => {
       if (this.dragIndex === null) return;
       event.preventDefault();
-      this.context.routing.moveWaypoint(this.dragIndex, this.indexOf(id));
+
+      const target = this.dropIndex(row, event as DragEvent, id);
+      this.clearDropTargets();
+      this.context.routing.moveWaypoint(this.dragIndex, target);
       this.dragIndex = null;
     });
 

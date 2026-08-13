@@ -61,12 +61,13 @@ export class ResultsView {
     this.detailSummary = el("p", RC.detailSummary);
     this.stepsList = el("ol", RC.steps);
 
+    // RoutingPanel/Detail: a tinted bar holding the way back and the title
     const detailTop = el("div", RC.detailTop);
-    const back = button(RC.detailBack, labels.backToRoutes, "chevron-left");
+    const back = button(RC.detailBack, labels.backToRoutes, "arrow-left");
     back.addEventListener("click", () => {
       this.showRoutes();
     });
-    detailTop.append(back);
+    detailTop.append(back, el("h3", RC.detailTitle, labels.routeOverview));
 
     this.detailElement = el("div", RC.view);
     this.detailElement.dataset.view = "detail";
@@ -271,7 +272,10 @@ export class ResultsView {
       const stepIcon = icon(maneuverIconId(entry.step.maneuver?.type), entry.step.maneuver?.type);
       stepIcon.classList.add(RC.stepIcon);
 
-      stepButton.append(stepIcon, el("span", RC.stepText, instruction), el("span", RC.stepDistance, distance));
+      // the design stacks the two: the instruction, then its distance under it
+      const lines = el("span", RC.stepLines);
+      lines.append(el("span", RC.stepText, instruction), el("span", RC.stepDistance, distance));
+      stepButton.append(stepIcon, lines);
       // the visible text is split across two spans, so the button gets its own
       // accessible name
       stepButton.setAttribute("aria-label", `${instruction}, ${distance}`);

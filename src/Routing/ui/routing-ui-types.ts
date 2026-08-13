@@ -141,6 +141,8 @@ export type RoutingControlLabels = {
   errors?: Partial<Record<RoutingErrorReason, string>>;
   /** The back control of the turn-by-turn view. */
   backToRoutes?: string;
+  /** Heading of the turn-by-turn view. */
+  routeOverview?: string;
   /** Accessible name of the turn-by-turn button on a route card. */
   showDetail?: string;
   /** Shown in the turn-by-turn view when the response carried no steps. */
@@ -318,6 +320,8 @@ export type RoutingControlTheme = {
   shadow?: string;
   /** Drop shadow of the search result list, which floats over the map. */
   listShadow?: string;
+  /** Hairline between turn-by-turn steps. */
+  stepDivider?: string;
 };
 
 //#endregion

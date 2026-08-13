@@ -221,6 +221,8 @@
   --maptiler-routing-skeleton-highlight: #f1f5ff;
   /* SearchResultList */
   --maptiler-routing-list-shadow: 0 10px 35px rgb(51 51 89 / 15%);
+  /* the hairline between turn-by-turn steps, lighter than the panel's border */
+  --maptiler-routing-step-divider: #e1eaff;
   --maptiler-routing-icon-size: 18px;
   --maptiler-routing-radius: 10px;
   --maptiler-routing-radius-small: 4px;
@@ -378,10 +380,26 @@
 .maptiler-routing-waypoint-handle {
   width: 24px;
   height: 24px;
+  /* what the handle does is move the row: an open hand to say it can be
+     picked up, a closed one while it is being moved — never the copy cursor a
+     drag source carries by default */
+  cursor: grab;
+}
+
+.maptiler-routing-waypoint-handle:active,
+.maptiler-routing-waypoint[data-dragging] .maptiler-routing-waypoint-handle {
+  cursor: grabbing;
 }
 
 .maptiler-routing-waypoint-remove,
 .maptiler-routing-detail-back {
+  width: 32px;
+  height: 32px;
+}
+
+.maptiler-routing-detail-back .maptiler-routing-icon {
+  /* the arrow is drawn inside a 32px frame, so the icon takes the whole
+     button and the glyph lands where the design puts it */
   width: 32px;
   height: 32px;
 }
@@ -481,8 +499,46 @@
   position: relative;
 }
 
-.maptiler-routing-waypoint[data-dragging] {
-  opacity: 0.5;
+/* While a row is being carried, its place is held by a placeholder the same
+   size — the row itself is under the cursor, so leaving it in place, faded,
+   would show it in two places at once. */
+.maptiler-routing-waypoint[data-dragging] > * {
+  visibility: hidden;
+}
+
+.maptiler-routing-waypoint[data-dragging]::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 34px;
+  border-radius: 8px;
+  background: linear-gradient(
+    100deg,
+    var(--maptiler-routing-skeleton-color) 0%,
+    var(--maptiler-routing-skeleton-highlight) 50%,
+    var(--maptiler-routing-skeleton-color) 100%
+  );
+  background-size: 200% 100%;
+  animation: maptiler-routing-skeleton 1.4s ease-in-out infinite;
+}
+
+/* Where the row would land, drawn on the edge it would land against. */
+.maptiler-routing-waypoint[data-drop]::after {
+  content: "";
+  position: absolute;
+  left: 34px;
+  right: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--maptiler-routing-accent);
+  pointer-events: none;
+}
+
+.maptiler-routing-waypoint[data-drop="before"]::after {
+  top: -6px;
+}
+
+.maptiler-routing-waypoint[data-drop="after"]::after {
+  bottom: -6px;
 }
 
 /* The picture dragged under the cursor: the row on an opaque background,
@@ -559,7 +615,7 @@
 /* Pin: the From row is the "Circle" variant, every other row the "Pin" one.
    Active is a colour change on the same shape — the muted blue by default,
    the accent while the field is hovered or focused. */
-.maptiler-routing-waypoint-pin {
+.maptiler-routing-waypoint-field .maptiler-routing-waypoint-pin {
   flex: none;
   width: 20px;
   height: 20px;
@@ -1100,16 +1156,27 @@
 
 /* Turn by turn */
 
+/* RoutingPanel/Detail: the way back and the heading share a tinted bar. */
 .maptiler-routing-detail-top {
   display: flex;
   align-items: center;
-  gap: var(--maptiler-routing-gap);
-  padding-bottom: 4px;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--maptiler-routing-surface-alt);
+}
+
+.maptiler-routing-detail-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 21px;
 }
 
 .maptiler-routing-detail-summary {
-  margin: 0 0 8px;
+  margin: 8px 0 0;
   color: var(--maptiler-routing-muted-color);
+  font-size: 14px;
 }
 
 .maptiler-routing-steps {
@@ -1118,34 +1185,46 @@
   padding: 0;
 }
 
+/* A step: a 24px maneuver icon and, beside it, the instruction over its
+   distance. The rows are separated by a hairline rather than boxed. */
 .maptiler-routing-step {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
   width: 100%;
-  padding: 8px 6px;
+  padding: 16px 8px 14px 16px;
   text-align: left;
-  border-bottom: 1px solid var(--maptiler-routing-border-color);
+  border-bottom: 1px solid var(--maptiler-routing-step-divider);
+}
+
+.maptiler-routing-step-lines {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 4px;
 }
 
 .maptiler-routing button.maptiler-routing-step:hover {
   background: var(--maptiler-routing-surface-alt);
 }
 
-.maptiler-routing-step-icon {
-  color: var(--maptiler-routing-accent);
+/* two classes, so it outranks the generic icon sizing further down */
+.maptiler-routing-step .maptiler-routing-step-icon {
   flex: none;
+  width: 24px;
+  height: 24px;
+  color: var(--maptiler-routing-accent);
 }
 
 .maptiler-routing-step-text {
-  flex: 1;
-  min-width: 0;
+  font-size: 15px;
   overflow-wrap: anywhere;
 }
 
 .maptiler-routing-step-distance {
   color: var(--maptiler-routing-muted-color);
-  white-space: nowrap;
+  font-size: 14px;
 }
 
 /* Icons
@@ -1220,6 +1299,11 @@
 .maptiler-routing-icon[data-icon="add-stop"] {
   -webkit-mask-image: url([src/style/svg/routing-add-stop.svg]);
   mask-image: url([src/style/svg/routing-add-stop.svg]);
+}
+
+.maptiler-routing-icon[data-icon="arrow-left"] {
+  -webkit-mask-image: url([src/style/svg/routing-arrow-left.svg]);
+  mask-image: url([src/style/svg/routing-arrow-left.svg]);
 }
 
 .maptiler-routing-icon[data-icon="calendar"] {
