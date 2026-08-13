@@ -1,0 +1,90 @@
+- generic [active]:
+  - generic [ref=f218e1]:
+    - generic:
+      - region "Map" [ref=f218e2]
+      - button "Map marker" [ref=f218e3]
+      - button "Map marker" [ref=f218e22]
+    - generic:
+      - button "Directions" [ref=f218e42] [cursor=pointer]
+      - generic:
+        - group
+  - generic [ref=f218e44]:
+    - heading "Routing control" [level=1] [ref=f218e45]
+    - paragraph [ref=f218e46]: Every button below reconfigures the routing control on the right by rebuilding the control with new options.
+    - generic [ref=f218e47]:
+      - generic [ref=f218e48]: Transport modes
+      - generic [ref=f218e49]:
+        - checkbox "Car" [checked] [ref=f218e50]
+        - text: Car
+      - generic [ref=f218e51]:
+        - checkbox "Truck" [checked] [ref=f218e52]
+        - text: Truck
+      - generic [ref=f218e53]:
+        - checkbox "Bike" [checked] [ref=f218e54]
+        - text: Bike
+      - generic [ref=f218e55]:
+        - checkbox "Walk" [checked] [ref=f218e56]
+        - text: Walk
+      - paragraph [ref=f218e57]: "Tab content:"
+      - button "Icon + name" [ref=f218e58] [cursor=pointer]
+      - button "Icon only" [ref=f218e59] [cursor=pointer]
+      - button "Name only" [ref=f218e60] [cursor=pointer]
+      - button "Nothing" [ref=f218e61] [cursor=pointer]
+      - generic [ref=f218e62]:
+        - checkbox "Show the switcher when only one mode is left" [checked] [ref=f218e63]
+        - text: Show the switcher when only one mode is left
+      - paragraph [ref=f218e64]: Untick every mode, choose "Nothing", or leave a single mode with the box unticked — the switcher leaves no trace behind in every case.
+      - button "Relabelled car only" [ref=f218e65] [cursor=pointer]
+    - generic [ref=f218e66]:
+      - generic [ref=f218e67]: Filters
+      - button "All" [ref=f218e68] [cursor=pointer]
+      - button "Departure only" [ref=f218e69] [cursor=pointer]
+      - button "None" [ref=f218e70] [cursor=pointer]
+      - paragraph [ref=f218e71]: "Each transport mode shows the filters that apply to it: route preference for the car, vehicle for the truck, bike type and speed for the bike."
+    - generic [ref=f218e72]:
+      - generic [ref=f218e73]: Units (developer's choice)
+      - button "Auto" [ref=f218e74] [cursor=pointer]
+      - button "km" [ref=f218e75] [cursor=pointer]
+      - button "mi" [ref=f218e76] [cursor=pointer]
+      - button "Let the user pick" [ref=f218e77] [cursor=pointer]
+    - generic [ref=f218e78]:
+      - generic [ref=f218e79]: Interactions
+      - generic [ref=f218e80]:
+        - checkbox "Place search" [checked] [ref=f218e81]
+        - text: Place search
+      - generic [ref=f218e82]:
+        - checkbox "Drag waypoints on map" [checked] [ref=f218e83]
+        - text: Drag waypoints on map
+      - generic [ref=f218e84]:
+        - checkbox "Turn-by-turn" [checked] [ref=f218e85]
+        - text: Turn-by-turn
+      - generic [ref=f218e86]:
+        - 'checkbox "Launcher button (unticked: always open)" [checked] [ref=f218e87]'
+        - text: "Launcher button (unticked: always open)"
+    - generic [ref=f218e88]:
+      - generic [ref=f218e89]: Theme
+      - textbox [ref=f218e90]: "#3174ff"
+      - button "Dark preset" [ref=f218e91] [cursor=pointer]
+      - button "Reset" [ref=f218e92] [cursor=pointer]
+    - generic [ref=f218e93]:
+      - generic [ref=f218e94]: Localization
+      - button "EN" [ref=f218e95] [cursor=pointer]
+      - button "FR" [ref=f218e96] [cursor=pointer]
+      - button "DE" [ref=f218e97] [cursor=pointer]
+      - button "Compact durations" [ref=f218e98] [cursor=pointer]
+    - generic [ref=f218e99]:
+      - generic [ref=f218e100]: Escape hatches
+      - button "Custom route card" [ref=f218e101] [cursor=pointer]
+      - button "Default cards" [ref=f218e102] [cursor=pointer]
+      - button "Unstyled" [ref=f218e103] [cursor=pointer]
+    - generic [ref=f218e104]:
+      - generic [ref=f218e105]: Programmatic
+      - button "Set waypoints" [ref=f218e106] [cursor=pointer]
+      - button "Select route 2" [ref=f218e107] [cursor=pointer]
+      - button "Open turn-by-turn" [ref=f218e108] [cursor=pointer]
+      - button "Open / close panel" [ref=f218e109] [cursor=pointer]
+    - generic [ref=f218e110]:
+      - generic [ref=f218e111]: Style
+      - button "Streets" [ref=f218e112] [cursor=pointer]
+      - button "Dark" [ref=f218e113] [cursor=pointer]
+    - generic [ref=f218e114]: Events

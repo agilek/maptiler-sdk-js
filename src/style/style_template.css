@@ -606,15 +606,15 @@
   margin-bottom: var(--maptiler-routing-gap);
 }
 
-/* Inputs, add-stop row: a bordered pill rather than a bare link, 32px tall
-   with the accent label. */
+/* Inputs, add-stop row: the shape of a pill — 32px tall, 8px radius, 12px of
+   side padding — but no border of its own. The design draws one and hides it,
+   leaving the tint it takes on hover as the only box the row ever shows. */
 .maptiler-routing-add-stop {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   height: 32px;
   padding: 0 12px;
-  border: 1px solid var(--maptiler-routing-border-color);
   border-radius: 8px;
   color: var(--maptiler-routing-accent);
   font-size: 14px;
