@@ -1,4 +1,4 @@
-import { Map, StyleSpecificationWithMetaData, type MapOptions } from "../src";
+import { Map, MaptilerRoutingControl, StyleSpecificationWithMetaData, type MapOptions } from "../src";
 
 declare global {
   interface Window {
@@ -13,6 +13,10 @@ declare global {
     __MT_NODE_ENV__: string | undefined;
     /** Routing events recorded by the routing fixture, so tests can assert on behavior. */
     __routingEvents: { type: string; selectedIndex?: number }[];
+    /** The panel, for the routingControl fixture. */
+    __control: MaptilerRoutingControl;
+    /** The panel's own events, recorded by the routingControl fixture. */
+    __panelEvents: { type: string }[];
     __testUtils?: {
       getHaloConfig: () => any;
       getSpaceConfig: () => any;

@@ -1,0 +1,36 @@
+{
+  "type": "FeatureCollection",
+  "query": ["zurich"],
+  "features": [
+    {
+      "id": "place.1",
+      "type": "Feature",
+      "place_type": ["place"],
+      "relevance": 1,
+      "properties": {},
+      "text": "Zurich",
+      "place_name": "Zurich, Switzerland",
+      "center": [8.5417, 47.3769],
+      "geometry": {
+        "type": "Point",
+        "coordinates": [8.5417, 47.3769]
+      },
+      "bbox": [8.45, 47.32, 8.63, 47.43]
+    },
+    {
+      "id": "place.2",
+      "type": "Feature",
+      "place_type": ["place"],
+      "relevance": 0.8,
+      "properties": {},
+      "text": "Zurich Airport",
+      "place_name": "Zurich Airport, Kloten, Switzerland",
+      "center": [8.5622, 47.4647],
+      "geometry": {
+        "type": "Point",
+        "coordinates": [8.5622, 47.4647]
+      }
+    }
+  ],
+  "attribution": "MapTiler mock fixture"
+}
