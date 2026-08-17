@@ -326,6 +326,15 @@
   top: 0;
 }
 
+/* From a bottom corner the control's column grows upwards from the map's
+   floor, so a panel still anchored to the launcher's top would open downward
+   and run off the viewport. `data-anchor` is set from applyLayoutOffset,
+   which is the one place that already knows which corner the control is in. */
+.maptiler-routing[data-launcher][data-anchor="bottom"] .maptiler-routing-panel {
+  top: auto;
+  bottom: 0;
+}
+
 .maptiler-routing-panel {
   display: flex;
   flex-direction: column;

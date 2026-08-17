@@ -606,6 +606,12 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
 
     this.claimTopSlot(container);
 
+    // from a bottom corner the column grows upwards from the map's floor, so a
+    // panel anchored to the launcher's top would run off the bottom edge — the
+    // stylesheet flips it to anchor from the bottom instead when this is set
+    const bottomCorner = container.classList.contains("maplibregl-ctrl-bottom-left") || container.classList.contains("maplibregl-ctrl-bottom-right");
+    this.root.dataset.anchor = bottomCorner ? "bottom" : "top";
+
     const rightCorner = container.classList.contains("maplibregl-ctrl-top-right") || container.classList.contains("maplibregl-ctrl-bottom-right");
 
     if (!this.opened || !rightCorner) {
