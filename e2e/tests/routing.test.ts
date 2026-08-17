@@ -48,7 +48,11 @@ async function readRouteState(page: Page) {
         selectedIndices: features.filter((feature) => feature.properties.selected).map((feature) => feature.properties.index),
         lineIndex: order.indexOf(lineLayerId),
         firstSymbolIndex,
-        markerCount: document.querySelectorAll(".maplibregl-marker").length,
+        // a route-label badge is a Marker too — its element carries both
+        // classes at once — so it must be told apart from a waypoint marker
+        // rather than counted as one
+        waypointMarkerCount: document.querySelectorAll(".maplibregl-marker:not(.maptiler-routing-route-label)").length,
+        routeLabelMarkerCount: document.querySelectorAll(".maplibregl-marker.maptiler-routing-route-label").length,
       };
     },
     { sourceId: SOURCE_ID, lineLayerId: LINE_LAYER_ID, casingLayerId: CASING_LAYER_ID, hitboxLayerId: HITBOX_LAYER_ID },
@@ -76,7 +80,10 @@ test("draws the routes it was given, under the labels", async ({ page }) => {
   expect(state.lineIndex).toBeLessThan(state.firstSymbolIndex);
 
   // one marker per located waypoint
-  expect(state.markerCount).toBe(2);
+  expect(state.waypointMarkerCount).toBe(2);
+
+  // one travel-time badge per route, shown by default
+  expect(state.routeLabelMarkerCount).toBe(3);
 });
 
 test("asks for exactly what the session was configured with", async ({ page }) => {
