@@ -6,16 +6,21 @@ import { makeSummary } from "./fixtures";
 
 describe("formatRouteDuration", () => {
   it.each([
-    [0, "0 min"],
-    [59, "1 min"],
-    [60, "1 min"],
-    [840, "14 min"],
-    [3600, "1 h"],
-    [3660, "1 h 1 min"],
-    [5040, "1 h 24 min"],
-    [86400, "24 h"],
+    [0, "0m"],
+    [59, "1m"],
+    [60, "1m"],
+    [840, "14m"],
+    [3600, "1h"],
+    [3660, "1h 1m"],
+    [5040, "1h 24m"],
+    [86400, "24h"],
   ])("formats %i seconds as %s", (seconds, expected) => {
-    expect(formatRouteDuration(seconds)).toBe(expected);
+    expect(formatRouteDuration(seconds, "en")).toBe(expected);
+  });
+
+  it("says it in the language it is given", () => {
+    expect(formatRouteDuration(5040, "fr")).toBe("1h 24min");
+    expect(formatRouteDuration(840, "de")).toBe("14 Min.");
   });
 });
 
@@ -32,11 +37,17 @@ describe("formatRouteDistance", () => {
     [10, "km", "10 km"],
     [123.4, "km", "123 km"],
   ] as const)("formats %f %s as %s", (length, units, expected) => {
-    expect(formatRouteDistance(length, units)).toBe(expected);
+    expect(formatRouteDistance(length, units, "en")).toBe(expected);
   });
 
   it("never falls back to metres for miles", () => {
-    expect(formatRouteDistance(0.4, "mi")).toBe("0.4 mi");
+    expect(formatRouteDistance(0.4, "mi", "en")).toBe("0.4 mi");
+  });
+
+  it("takes the language's own decimal separator", () => {
+    // French also joins the unit with a narrow no-break space, which is exactly
+    // the sort of detail Intl is here to get right
+    expect(formatRouteDistance(9.94, "km", "fr")).toBe("9,9\u202fkm");
   });
 });
 
@@ -53,6 +64,14 @@ describe("formatRouteArrival", () => {
     const expected = new Date(departure + 5040 * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
     expect(formatRouteArrival(5040, departure)).toBe(expected);
+  });
+
+  it("reads the clock in the language it is given", () => {
+    const departure = new Date("2026-01-01T22:00:00Z").getTime();
+
+    // en-US is a 12-hour locale and de a 24-hour one, whatever the runner's own
+    expect(formatRouteArrival(0, departure, "en-US")).toMatch(/AM|PM/);
+    expect(formatRouteArrival(0, departure, "de")).not.toMatch(/AM|PM/);
   });
 
   it("advances by the travel time", () => {

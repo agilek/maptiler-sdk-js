@@ -1,18 +1,58 @@
 import type { RouteSummary, RoutingUnits } from "./types";
 
 /**
+ * `Intl.NumberFormat` instances, keyed by everything that shapes one.
+ *
+ * A route card formats three values per alternative, on every render, and
+ * building a formatter is the expensive half of using one — so they are built
+ * once per (locale, unit, precision) and kept.
+ */
+const numberFormats = new Map<string, Intl.NumberFormat>();
+
+/**
+ * A formatter for one value-with-unit, in one language.
+ *
+ * @param locale - BCP 47 tag, or `undefined` for the runtime's own locale.
+ * @param unit - A CLDR unit identifier, such as `"kilometer"`.
+ * @param fractionDigits - Digits after the decimal separator, exactly.
+ * @param unitDisplay - How the unit is written. `"narrow"` is what the design
+ * uses for durations (`1h 24m`); `"short"` is the ordinary `9.9 km`.
+ */
+function unitFormat(locale: string | undefined, unit: string, fractionDigits: number, unitDisplay: "short" | "narrow"): Intl.NumberFormat {
+  const key = `${locale ?? ""}|${unit}|${fractionDigits.toString()}|${unitDisplay}`;
+  const cached = numberFormats.get(key);
+  if (cached) return cached;
+
+  const format = new Intl.NumberFormat(locale, {
+    style: "unit",
+    unit,
+    unitDisplay,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  });
+  numberFormats.set(key, format);
+  return format;
+}
+
+/**
  * Human-readable travel time.
  *
  * @param seconds - Duration in seconds.
- * @returns For example `"14 min"`, `"1 h"`, `"1 h 24 min"`.
+ * @param locale - Language to write it in. Defaults to the runtime's own.
+ * @returns For example `"14m"`, `"1h"`, `"1h 24m"` in English — the narrow
+ * units the design's route card uses. Another language gets its own: `"1 h"`
+ * and `"24 min"` in French.
  */
-export function formatRouteDuration(seconds: number): string {
+export function formatRouteDuration(seconds: number, locale?: string): string {
   const totalMinutes = Math.round(seconds / 60);
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
 
-  if (!hours) return `${minutes.toString()} min`;
-  return minutes ? `${hours.toString()} h ${minutes.toString()} min` : `${hours.toString()} h`;
+  const hourPart = unitFormat(locale, "hour", 0, "narrow").format(hours);
+  const minutePart = unitFormat(locale, "minute", 0, "narrow").format(minutes);
+
+  if (!hours) return minutePart;
+  return minutes ? `${hourPart} ${minutePart}` : hourPart;
 }
 
 /**
@@ -23,10 +63,12 @@ export function formatRouteDuration(seconds: number): string {
  * @returns For example `"400 m"`, `"9.9 km"`, `"123 km"`. Only metric
  * distances fall back to metres; there is no equivalent sub-unit for miles.
  */
-export function formatRouteDistance(length: number, units: RoutingUnits): string {
-  if (units === "km" && length < 1) return `${Math.round(length * 1000).toString()} m`;
-  if (length < 10) return `${length.toFixed(1)} ${units}`;
-  return `${Math.round(length).toString()} ${units}`;
+export function formatRouteDistance(length: number, units: RoutingUnits, locale?: string): string {
+  if (units === "km" && length < 1) return unitFormat(locale, "meter", 0, "short").format(Math.round(length * 1000));
+
+  const unit = units === "km" ? "kilometer" : "mile";
+  if (length < 10) return unitFormat(locale, unit, 1, "short").format(length);
+  return unitFormat(locale, unit, 0, "short").format(Math.round(length));
 }
 
 /**
@@ -37,8 +79,10 @@ export function formatRouteDistance(length: number, units: RoutingUnits): string
  * milliseconds. Defaults to the current time; pass it explicitly to keep a
  * caller (or a test) deterministic.
  */
-export function formatRouteArrival(seconds: number, now: number = Date.now()): string {
-  return new Date(now + seconds * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+export function formatRouteArrival(seconds: number, now: number = Date.now(), locale?: string): string {
+  // the locale decides the 12- or 24-hour clock along with the separator, which
+  // is the whole point of passing it
+  return new Date(now + seconds * 1000).toLocaleTimeString(locale ?? [], { hour: "2-digit", minute: "2-digit" });
 }
 
 /**
