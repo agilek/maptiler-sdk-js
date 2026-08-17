@@ -10,25 +10,32 @@
       font-family: system-ui, -apple-system, sans-serif;
     }
 
+    /*
+     * The settings sidebar is a real column, not an overlay on the map: the map
+     * (and every corner MapLibre places a control in, this page's routing panel
+     * included) starts to its right. An overlay would fight the routing panel
+     * for the same top-left corner the moment "Position" is set there.
+     */
     #map {
       position: absolute;
-      inset: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 320px;
       background: #ccc;
     }
 
     #panel {
       position: absolute;
-      top: 10px;
-      left: 10px;
+      inset: 0 auto 0 0;
       z-index: 2;
-      width: 290px;
-      max-height: calc(100% - 20px);
+      width: 320px;
       overflow: auto;
       padding: 14px;
-      border-radius: 10px;
       background: #fff;
       box-shadow: 0 0 6px 2px rgb(0 0 0 / 8%);
       font-size: 13px;
+      box-sizing: border-box;
     }
 
     #panel h1 {
@@ -72,20 +79,121 @@
       cursor: pointer;
     }
 
+    /* the value the control is currently on: these groups are radio buttons in
+       all but markup, and without this the panel never says where it stands */
+    #panel button[aria-pressed="true"] {
+      border-color: #3174ff;
+      background: #eaf1ff;
+      color: #1a4bb8;
+      font-weight: 600;
+    }
+
     #panel label.check {
       display: block;
       margin-bottom: 3px;
     }
 
-    #log {
+    /* the four transport modes are one short row rather than four lines */
+    #panel .inline-checks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 10px;
+      margin-bottom: 3px;
+    }
+
+    #panel .inline-checks label.check {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      margin-bottom: 0;
+    }
+
+    /* the per-mode label fields, revealed by "Use custom labels" */
+    #panel .label-fields {
+      margin: 2px 0 6px;
+    }
+
+    #panel .label-fields label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 3px;
+    }
+
+    #panel .label-fields span {
+      flex: none;
+      width: 38px;
+      color: #6b7280;
+      font-size: 12px;
+    }
+
+    #panel .label-fields input {
+      font: inherit;
+      flex: 1;
+      min-width: 0;
+      padding: 3px 6px;
+      border: 1px solid #d5dced;
+      border-radius: 4px;
+    }
+
+    /* the copy control sits in the corner of the block it copies */
+    #panel .code-block {
+      position: relative;
+    }
+
+    #code {
       margin: 0;
-      max-height: 120px;
+      max-height: 200px;
       overflow: auto;
       background: #f6f7fb;
       border-radius: 4px;
-      padding: 6px;
+      /* room on the right for the button, which floats over the block */
+      padding: 8px 34px 8px 8px;
       font-size: 11px;
-      line-height: 1.4;
+      line-height: 1.45;
+      white-space: pre;
+      tab-size: 2;
+    }
+
+    #panel .copy-button {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      display: inline-flex;
+      margin: 0;
+      padding: 4px;
+      color: #6b7280;
+    }
+
+    #panel .copy-button:hover {
+      border-color: #3174ff;
+      color: #1a4bb8;
+    }
+
+    #panel .copy-button svg {
+      display: block;
+      width: 14px;
+      height: 14px;
+    }
+
+    /* one glyph at a time: the sheets say "copy this", the tick says "copied" */
+    #panel .copy-button .tick,
+    #panel .copy-button[data-state="copied"] .sheets {
+      display: none;
+    }
+
+    #panel .copy-button[data-state="copied"] .tick {
+      display: block;
+    }
+
+    #panel .copy-button[data-state="copied"] {
+      border-color: #0f7b3f;
+      color: #0f7b3f;
+    }
+
+    #panel .copy-button[data-state="failed"] {
+      border-color: #d92d20;
+      color: #d92d20;
     }
   </style>
 
@@ -101,18 +209,25 @@
 
     <div class="group">
       <span class="label">Transport modes</span>
-      <label class="check"><input type="checkbox" class="mode-toggle" value="car" checked> Car</label>
-      <label class="check"><input type="checkbox" class="mode-toggle" value="truck" checked> Truck</label>
-      <label class="check"><input type="checkbox" class="mode-toggle" value="bicycle" checked> Bike</label>
-      <label class="check"><input type="checkbox" class="mode-toggle" value="pedestrian" checked> Walk</label>
+      <div class="inline-checks">
+        <label class="check"><input type="checkbox" class="mode-toggle" value="car" checked> Car</label>
+        <label class="check"><input type="checkbox" class="mode-toggle" value="truck" checked> Truck</label>
+        <label class="check"><input type="checkbox" class="mode-toggle" value="bicycle" checked> Bike</label>
+        <label class="check"><input type="checkbox" class="mode-toggle" value="pedestrian" checked> Walk</label>
+      </div>
       <p class="hint">Tab content:</p>
       <button data-display="both">Icon + name</button>
       <button data-display="icon">Icon only</button>
       <button data-display="label">Name only</button>
       <button data-display="none">Nothing</button>
-      <label class="check"><input type="checkbox" id="opt-single-mode" checked> Show the switcher when only one mode is left</label>
-      <p class="hint">Untick every mode, choose "Nothing", or leave a single mode with the box unticked — the switcher leaves no trace behind in every case.</p>
-      <button data-modes="relabelled">Relabelled car only</button>
+      <label class="check"><input type="checkbox" id="opt-hide-single-mode"> Hide the switcher when only one option</label>
+      <label class="check"><input type="checkbox" id="opt-custom-labels"> Use custom labels</label>
+      <div class="label-fields" id="mode-labels" hidden>
+        <label><span>Car</span><input type="text" class="mode-label" data-mode="car" placeholder="Car"></label>
+        <label><span>Truck</span><input type="text" class="mode-label" data-mode="truck" placeholder="Truck"></label>
+        <label><span>Bike</span><input type="text" class="mode-label" data-mode="bicycle" placeholder="Bike"></label>
+        <label><span>Walk</span><input type="text" class="mode-label" data-mode="pedestrian" placeholder="Walk"></label>
+      </div>
     </div>
 
     <div class="group">
@@ -132,6 +247,15 @@
     </div>
 
     <div class="group">
+      <span class="label">Position</span>
+      <button data-position="top-left">Top left</button>
+      <button data-position="top-right">Top right</button>
+      <button data-position="bottom-left">Bottom left</button>
+      <button data-position="bottom-right">Bottom right</button>
+      <p class="hint">Not a control option — it's the corner passed to <code>map.addControl</code>. The panel opens toward whichever side has room.</p>
+    </div>
+
+    <div class="group">
       <span class="label">Interactions</span>
       <label class="check"><input type="checkbox" id="opt-search" checked> Place search</label>
       <label class="check"><input type="checkbox" id="opt-drag" checked> Drag waypoints on map</label>
@@ -141,24 +265,25 @@
 
     <div class="group">
       <span class="label">Theme</span>
-      <input type="color" id="accent" value="#3174ff">
-      <button data-theme="dark">Dark preset</button>
-      <button data-theme="reset">Reset</button>
+      <button data-theme="light">Light</button>
+      <button data-theme="dark">Dark</button>
+      <button data-theme="auto">Auto (system)</button>
     </div>
 
     <div class="group">
-      <span class="label">Localization</span>
-      <button data-lang="en">EN</button>
-      <button data-lang="fr">FR</button>
-      <button data-lang="de">DE</button>
-      <button data-lang="compact">Compact durations</button>
+      <span class="label">Formatting</span>
+      <button data-format="compact">Compact durations</button>
+      <button data-format="default">Default formatting</button>
     </div>
 
     <div class="group">
       <span class="label">Escape hatches</span>
       <button data-render="card">Custom route card</button>
       <button data-render="default">Default cards</button>
+      <button data-search="provider">Own place search</button>
+      <button data-search="maptiler">MapTiler geocoding</button>
       <button data-unstyled="on">Unstyled</button>
+      <p class="hint">"Own place search" answers the fields from a hard-coded list in this page instead of the Geocoding API — type "a" to see it. MapTiler geocoding is the default.</p>
     </div>
 
     <div class="group">
@@ -176,8 +301,20 @@
     </div>
 
     <div class="group">
-      <span class="label">Events</span>
-      <pre id="log"></pre>
+      <span class="label">Code</span>
+        <div class="code-block">
+        <pre id="code"></pre>
+        <button type="button" id="copy-code" class="copy-button" aria-label="Copy the code" title="Copy the code">
+          <svg class="sheets" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="9" y="9" width="12" height="12" rx="2" />
+            <path d="M6 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v2" />
+          </svg>
+          <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 12.5 9.5 18 20 6.5" />
+          </svg>
+        </button>
+      </div>
+      <p class="hint">The control on the right, as code — it follows every change made above. Paste it into your own map to get this exact panel.</p>
     </div>
   </div>
 
