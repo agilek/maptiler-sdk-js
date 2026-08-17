@@ -72,6 +72,33 @@ export function setDataFlag(element: HTMLElement, name: string, value: boolean):
 }
 
 /**
+ * Moves focus without drawing a focus ring.
+ *
+ * The panel moves focus when a view opens or closes, so the keyboard is never
+ * left on something hidden. The browser cannot tell that kind of focus from a
+ * keyboard one, though — it matches `:focus-visible` either way — so a visitor
+ * who clicked a button with the mouse got a ring around whatever the panel
+ * focused next, which reads as an error rather than as a hint.
+ *
+ * The flag suppresses the ring until the element is left or a key is pressed in
+ * it: the moment the keyboard is in use, the ring is exactly what is wanted.
+ */
+export function focusQuietly(element: HTMLElement | null | undefined): void {
+  if (!element) return;
+
+  const restore = () => {
+    delete element.dataset.quietFocus;
+    element.removeEventListener("blur", restore);
+    element.removeEventListener("keydown", restore);
+  };
+
+  element.dataset.quietFocus = "";
+  element.addEventListener("blur", restore);
+  element.addEventListener("keydown", restore);
+  element.focus();
+}
+
+/**
  * Coalesces DOM writes into one animation frame.
  *
  * Several state changes in the same tick (a response arriving, a selection

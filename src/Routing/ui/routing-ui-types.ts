@@ -126,8 +126,10 @@ export type RoutingControlLabels = {
   loading?: string;
   /** Status shown when fewer than two waypoints are located. */
   needsWaypoints?: string;
-  /** Status shown when the service returned no route. */
+  /** Heading of the empty state, shown when the service returned no route. */
   noRoutes?: string;
+  /** Second line of that empty state: what the visitor can do about it. */
+  noRoutesHint?: string;
   /** Fallback error text, used when a failure cannot be classified. */
   error?: string;
   /**
@@ -264,67 +266,103 @@ export type RoutingControlRenderers = {
   footer?: (context: RoutingRenderContext) => HTMLElement | null | undefined;
 };
 
+/** One place offered under a waypoint field. */
+export type RoutingSearchResult = {
+  /**
+   * The place, in full: the second line of the row, and the text the field
+   * takes when it is picked.
+   */
+  label: string;
+  /** Position, as `[lng, lat]`. */
+  lngLat: [number, number];
+  /**
+   * The name on its own, for the first line of the row.
+   *
+   * Defaults to `label`, which is what a provider with nothing shorter to say
+   * should leave it as.
+   */
+  name?: string;
+  /** Stable identity, when the provider has one. Used for nothing but keys. */
+  id?: string;
+};
+
+/**
+ * Where the panel's place search gets its results.
+ *
+ * @param query - What the visitor typed, trimmed, already past `minLength`.
+ * @param context - The rest of what the panel knows about the query.
+ * @returns The places to list, best first. At most `limit` are shown.
+ *
+ * @example
+ * ```ts
+ * new MaptilerRoutingControl({
+ *   search: {
+ *     provider: async (query, { limit, signal }) => {
+ *       const response = await fetch(`/api/places?q=${encodeURIComponent(query)}`, { signal });
+ *       const places = await response.json();
+ *       return places.slice(0, limit).map((place) => ({
+ *         name: place.name,
+ *         label: place.address,
+ *         lngLat: [place.lng, place.lat],
+ *       }));
+ *     },
+ *   },
+ * });
+ * ```
+ */
+export type RoutingSearchProvider = (query: string, context: RoutingSearchContext) => RoutingSearchResult[] | Promise<RoutingSearchResult[]>;
+
+/** What the panel tells a {@link RoutingSearchProvider} about a query. */
+export type RoutingSearchContext = {
+  /**
+   * Where the map is looking, for biasing results towards it.
+   *
+   * Absent when the `proximity` option is off, which is how "do not bias this"
+   * is expressed.
+   */
+  proximity?: [number, number];
+  /** The panel's language, as resolved from the `language` option. */
+  language?: string;
+  /** How many results the panel will show. Anything past this is dropped. */
+  limit: number;
+  /**
+   * Aborted when the query is superseded or the panel goes away.
+   *
+   * Pass it to `fetch`: a query nobody is waiting for should not be in flight,
+   * and the panel ignores whatever a superseded call returns.
+   */
+  signal: AbortSignal;
+};
+
+/**
+ * Names a coordinate: the reverse of a {@link RoutingSearchProvider}.
+ *
+ * @returns The name for that point, or nothing — a coordinate with no name is
+ * ordinary, and the field goes on showing the numbers.
+ */
+export type RoutingReverseProvider = (lngLat: [number, number], context: RoutingReverseContext) => string | undefined | null | Promise<string | undefined | null>;
+
+/** What the panel tells a {@link RoutingReverseProvider} about a lookup. */
+export type RoutingReverseContext = {
+  /** The panel's language, as resolved from the `language` option. */
+  language?: string;
+  /** Aborted when the panel goes away. */
+  signal: AbortSignal;
+};
+
 /** What the panel is currently showing. */
 export type RoutingPanelStatus = "idle" | "loading" | "ready" | "empty" | "error";
 
 /**
- * Theme values, written as CSS custom properties on the panel root.
+ * The two palettes the panel ships.
  *
  * @remarks
- * Every key maps to `--maptiler-routing-<kebab-case-key>`. Setting them here
- * is equivalent to writing the same custom properties in a stylesheet; this
- * object exists so a theme can be applied without shipping CSS.
+ * `"auto"` follows the reader's own `prefers-color-scheme`. There is no option
+ * for individual colors: the palettes are the design, and both are declared in
+ * the stylesheet as custom properties on the panel root — readable, and
+ * overridable from your own CSS if you must.
  */
-export type RoutingControlTheme = {
-  /** Accent color: the selected tab, active borders, the selected route. */
-  accent?: string;
-  /** Text color drawn on the accent color. */
-  accentContrast?: string;
-  /** Panel background. */
-  surface?: string;
-  /** Secondary surface: the switcher rail and unselected cards. */
-  surfaceAlt?: string;
-  /** Hover tint of interactive rows. */
-  surfaceHover?: string;
-  /** Primary text color. */
-  textColor?: string;
-  /** Secondary text color, used for meta lines. */
-  mutedColor?: string;
-  /** Default border color. */
-  borderColor?: string;
-  /** Tint a search field takes while the pointer is over it. */
-  fieldHover?: string;
-  /** Color of a waypoint pin while its field is neither hovered nor focused. */
-  pinColor?: string;
-  /** Color of the transport-mode icons, which is the same in every tab state. */
-  modeIconColor?: string;
-  /** Color of error text and of the border around it. */
-  dangerColor?: string;
-  /** Background of the error card. */
-  dangerSurface?: string;
-  /** Base color of the loading skeleton. */
-  skeletonColor?: string;
-  /** Color the skeleton's shimmer sweeps through. */
-  skeletonHighlight?: string;
-  /** Corner radius of the panel and its cards. */
-  radius?: string;
-  /** Corner radius of small controls. */
-  radiusSmall?: string;
-  /** Panel width. */
-  width?: string;
-  /** Panel maximum height. */
-  maxHeight?: string;
-  /** Font stack. */
-  fontFamily?: string;
-  /** Panel drop shadow. */
-  shadow?: string;
-  /** Drop shadow of the search result list, which floats over the map. */
-  listShadow?: string;
-  /** Hairline between turn-by-turn steps. */
-  stepDivider?: string;
-  /** The gap a stop leaves behind while it is being dragged. */
-  placeholderColor?: string;
-};
+export type RoutingControlTheme = "light" | "dark" | "auto";
 
 //#endregion
 
@@ -381,8 +419,8 @@ export type MaptilerRoutingControlOptions = {
   /**
    * Whether the panel starts open.
    *
-   * Default: `false` when the launcher is shown, so the map starts
-   * unobstructed as in the design; `true` when it is not.
+   * Default: `true`. Pass `false` to start with only the launcher, leaving the
+   * map unobstructed until the user asks for directions.
    */
   open?: boolean;
 
@@ -477,7 +515,22 @@ export type MaptilerRoutingControlOptions = {
    */
   units?: RoutingUnitsOption;
 
-  /** Language of the turn-by-turn instructions. Defaults to the SDK's primary language. */
+  /**
+   * Language the panel speaks.
+   *
+   * It reaches the turn-by-turn instructions the service writes, the place
+   * names the search returns, and every value the panel formats itself —
+   * durations, distances and arrival clocks all go through `Intl` with it.
+   *
+   * It does **not** translate the panel's own labels: the SDK ships those in
+   * English only, and {@link MaptilerRoutingControlOptions.labels} is how they
+   * are replaced.
+   *
+   * Default: the code of `config.primaryLanguage`, so a map configured for one
+   * language does not need this option at all. Language *modes* — `STYLE`,
+   * `VISITOR` and the like — have no single code, and fall through to the
+   * browser's own locale.
+   */
   language?: string;
 
   /**
@@ -520,10 +573,37 @@ export type MaptilerRoutingControlOptions = {
         debounceMs?: number;
         /** Maximum number of suggestions listed. Default: `5` */
         limit?: number;
-        /** Restricts results to these ISO 3166-1 alpha-2 country codes. */
+        /** Restricts results to these ISO 3166-1 alpha-2 country codes. Ignored by a `provider`. */
         country?: readonly string[];
         /** Biases results towards the current map view. Default: `true` */
         proximity?: boolean;
+        /**
+         * Answers the field instead of MapTiler Geocoding.
+         *
+         * Default: MapTiler Geocoding. Supply this only to search somewhere
+         * else — your own address database, your own geocoder — and keep the
+         * field, the result list, its keyboard handling and the
+         * "My location" / "Select from map" rows as they are.
+         *
+         * The panel debounces, cancels and orders the calls, exactly as it does
+         * its own: `minLength`, `debounceMs` and `limit` still apply, and
+         * `country` does not — filtering is yours to do. Throwing, or rejecting,
+         * shows no suggestions rather than an error.
+         *
+         * @see {@link RoutingSearchProvider}
+         */
+        provider?: RoutingSearchProvider;
+        /**
+         * Names a coordinate instead of MapTiler Geocoding.
+         *
+         * Used for a waypoint the visitor placed rather than typed — a map
+         * click, a right-click, a marker dragged — whose field would otherwise
+         * show a coordinate. Pair it with `provider` when the places come from
+         * your own data; on its own it renames what our search found.
+         *
+         * @see {@link RoutingReverseProvider}
+         */
+        reverse?: RoutingReverseProvider;
       };
 
   /**
@@ -585,21 +665,25 @@ export type MaptilerRoutingControlOptions = {
 
   //#region Presentation
 
-  /** Text overrides, for localization. */
+  /**
+   * Text overrides, for localization.
+   *
+   * The SDK ships every string in English and no translations, so this is how a
+   * page in another language gets a panel in that language. Merged one level
+   * deep: override one key and the rest stay as they are. The values around
+   * them already follow {@link MaptilerRoutingControlOptions.language}.
+   */
   labels?: RoutingControlLabels;
 
   /** Value-formatting overrides. */
   formatters?: RoutingControlFormatters;
 
-  /** Theme values, written as CSS custom properties on the panel root. */
-  theme?: RoutingControlTheme;
-
   /**
-   * Arbitrary CSS custom properties set on the panel root, for anything
-   * {@link RoutingControlTheme} does not cover. Keys are used verbatim and
-   * must include the leading `--`.
+   * Which of the two palettes the panel wears.
+   *
+   * Default: `"auto"`, which follows the reader's `prefers-color-scheme`.
    */
-  cssVariables?: Record<string, string>;
+  theme?: RoutingControlTheme;
 
   /** Per-subsection render hooks. See {@link RoutingControlRenderers}. */
   renderers?: RoutingControlRenderers;

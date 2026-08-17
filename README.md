@@ -2105,7 +2105,7 @@ error.
 
 #### Customising the panel
 
-Four levels, in the order to reach for them.
+Five levels, in the order to reach for them.
 
 **1. Options.** Which transport modes exist and how they are labelled, which filters are shown,
 units, alternates, waypoint limits, and each interaction:
@@ -2116,7 +2116,7 @@ new MaptilerRoutingControl({
   modeDisplay: "icon",                  // "both" | "icon" | "label" | "none"
   showSingleMode: false,                // drop the switcher when one mode is left
   launcher: true,                       // the button that opens the panel
-  open: false,                          // whether it starts open
+  open: true,                           // whether it starts open (default: true)
   filters: ["mode", "departure"],       // in order; each profile keeps what applies to it:
                                         // "mode" (car) | "departure" | "vehicle" (truck)
                                         // "bicycleType" | "speed" (bike, walk)
@@ -2125,7 +2125,7 @@ new MaptilerRoutingControl({
   units: "mi",                          // "km" | "mi" fixed, "shown" lets the user pick,
                                         // "auto" reads it from the browser
   maxWaypoints: 6,
-  search: { minLength: 3, country: ["ch", "de"] },
+  search: { minLength: 3, country: ["ch", "de"] },   // or a `provider`, see 4 below
   clickToAddWaypoint: "armed",          // "off" | "armed" | "always"
   dragWaypointsOnMap: true,
   reorderWaypoints: true,
@@ -2134,9 +2134,18 @@ new MaptilerRoutingControl({
 });
 ```
 
-**2. Theming.** Every colour, radius and size is a CSS custom property on the panel root. Set them
-in your own stylesheet, or through the `theme` and `cssVariables` options. No shipped rule uses
-`!important` and none is stronger than two classes, so your own rules win by cascade order.
+**2. Theme.** The panel ships two palettes, light and dark, and no way to configure the colours
+inside them:
+
+```ts
+new MaptilerRoutingControl({
+  theme: "dark", // "light" | "dark" | "auto" (default: follows prefers-color-scheme)
+});
+```
+
+Every colour, radius and size is still a CSS custom property on the panel root, so a panel that has
+to match a house style can be repainted from a stylesheet. No shipped rule uses `!important` and
+none is stronger than two classes, so your own rules win by cascade order:
 
 ```css
 .maptiler-routing {
@@ -2146,35 +2155,30 @@ in your own stylesheet, or through the `theme` and `cssVariables` options. No sh
 }
 ```
 
-A dark panel, copy-pasteable:
-
-```css
-.maptiler-routing {
-  --maptiler-routing-surface: #12161f;
-  --maptiler-routing-surface-alt: #1b2230;
-  --maptiler-routing-surface-hover: #232c3d;
-  --maptiler-routing-text-color: #e6eaf2;
-  --maptiler-routing-muted-color: #95a0b5;
-  --maptiler-routing-border-color: #2b3446;
-  --maptiler-routing-accent: #6f9bff;
-  --maptiler-routing-accent-contrast: #0b0e14;
-  --maptiler-routing-field-hover: #1b2230;
-  --maptiler-routing-pin-color: #41527a;
-  --maptiler-routing-mode-icon-color: #95a0b5;
-  --maptiler-routing-skeleton-color: #1b2230;
-  --maptiler-routing-skeleton-highlight: #232c3d;
-}
-```
-
 The class names are part of the public API: `maptiler-routing`, `-header`, `-body`, `-modes`,
 `-mode`, `-waypoints`, `-waypoint`, `-waypoint-field`, `-waypoint-input`, `-suggestions`,
 `-suggestion`, `-actions`, `-add-stop`, `-filters`, `-dropdown`, `-dropdown-toggle`,
-`-dropdown-menu`, `-dropdown-row`, `-status`, `-error`, `-skeleton`, `-skeleton-card`, `-routes`,
+`-dropdown-menu`, `-dropdown-row`, `-status`, `-empty`, `-empty-art`, `-empty-title`, `-empty-hint`,
+`-error`, `-skeleton`, `-skeleton-card`, `-results`,
+`-routes`,
 `-route-card`, `-route-duration`, `-route-meta`, `-route-detail`, `-steps`, `-step`
 and `-icon`. `unstyled: true` drops the root class, so nothing the SDK ships applies and the DOM is
 yours to style from scratch.
 
-**3. Localization and formatting.** Every visible string, and how values are turned into text:
+**3. Localization and formatting.** The panel follows `config.primaryLanguage` on its own: the
+turn-by-turn instructions come back in it, so do the place names the search offers, and every value
+the panel prints itself — durations, distances and arrival clocks — is formatted through `Intl` with
+it. Set the language once and the panel comes along:
+
+```ts
+config.primaryLanguage = Language.FRENCH;
+// or per control, if one panel has to differ from the map
+new MaptilerRoutingControl({ language: "fr" });
+```
+
+What that does *not* do is translate the panel's own labels: the SDK ships those in English and no
+translations. `labels` is how they are replaced — merged one key at a time, so you translate as much
+or as little as you need:
 
 ```ts
 new MaptilerRoutingControl({
@@ -2193,7 +2197,41 @@ new MaptilerRoutingControl({
 });
 ```
 
-**4. Render hooks.** Replace one subsection with your own element, and fall back to the built-in
+**4. Your own place search.** The fields search MapTiler Geocoding by default. A `provider` puts
+your own search behind them instead — your address database, your own geocoder — while the field,
+the result list, its keyboard handling and the "My location" / "Select from map" rows stay as they
+are. The panel debounces, cancels and orders the calls the same way it does its own, and hands you
+an `AbortSignal` for the query it no longer wants:
+
+```ts
+new MaptilerRoutingControl({
+  search: {
+    provider: async (query, { proximity, limit, signal }) => {
+      const response = await fetch(`/api/places?q=${encodeURIComponent(query)}`, { signal });
+      const places = await response.json();
+
+      return places.map((place) => ({
+        name: place.name,                    // first line; defaults to `label`
+        label: place.address,                // second line, and what the field takes
+        lngLat: [place.lng, place.lat],
+      }));
+    },
+
+    // the other half: naming a point the visitor placed on the map rather than typed
+    reverse: async ([lng, lat], { signal }) => {
+      const response = await fetch(`/api/nearest?lng=${lng}&lat=${lat}`, { signal });
+      return (await response.json()).address;
+    },
+  },
+});
+```
+
+`minLength`, `debounceMs` and `limit` still apply; `country` does not — filtering is yours to do.
+Throwing shows no suggestions rather than an error, on the principle that a search which is down
+must not take the routing panel with it. Waypoints picked this way are ordinary waypoints, so
+everything else — reordering, dragging, the route itself — is unchanged.
+
+**5. Render hooks.** Replace one subsection with your own element, and fall back to the built-in
 rendering by returning `undefined`:
 
 ```ts

@@ -1,6 +1,6 @@
-import type { GeocodingFeature } from "@maptiler/client";
 import type { RoutingWaypoint } from "../types";
 import type { RoutingPanelContext } from "./routing-ui-context";
+import type { RoutingPlace } from "./routing-geocoder";
 import { placeFloating } from "./routing-floating";
 import { RC } from "./routing-ui-defaults";
 import { button, el, icon, setBooleanAttribute, setDataFlag } from "./routing-ui-dom";
@@ -12,7 +12,7 @@ type WaypointRow = {
   list: HTMLUListElement;
   /** Index of the highlighted suggestion, or `-1` when none is. */
   activeSuggestion: number;
-  suggestions: GeocodingFeature[];
+  suggestions: RoutingPlace[];
   /**
    * `true` while the visitor is part-way through typing something.
    *
@@ -26,6 +26,44 @@ type WaypointRow = {
 
 /** Unique-enough id source for the `aria-controls` / `aria-activedescendant` wiring. */
 let listboxSequence = 0;
+
+/** How far the pointer travels before a press on a handle becomes a drag. */
+const DRAG_THRESHOLD = 4;
+
+/**
+ * A reorder in progress.
+ *
+ * The drag is driven by pointer events rather than HTML5 drag and drop: a
+ * native drag hands the cursor to the browser, which paints its own arrow and
+ * ignores `cursor`, and its drag image is a one-off snapshot — so the carried
+ * row could never show what the field holds, since `cloneNode` copies the
+ * value attribute and not the text the panel writes as a property.
+ */
+type DragSession = {
+  /** Waypoint being carried. */
+  id: string;
+  /** Index it was picked up from, which is what the drop is measured against. */
+  index: number;
+  row: WaypointRow;
+  /** The handle holding the pointer capture, so it can be released on cancel. */
+  handle: HTMLElement;
+  pointerId: number;
+  /** Where the press landed, for the threshold above. */
+  startX: number;
+  startY: number;
+  /** Where in the row it was gripped, so the copy keeps that grip. */
+  offsetX: number;
+  offsetY: number;
+  /** The copy under the pointer. `null` until the press passes the threshold. */
+  ghost: HTMLElement | null;
+  /** The page's own cursor, put back when the drag ends. */
+  cursor: string | null;
+  /** Escape cancels the drag; kept so the listener can be removed again. */
+  onKeydown: (event: KeyboardEvent) => void;
+};
+
+/** A drop position: a row, and which of its edges the drop lands against. */
+type DropTarget = { row: WaypointRow; id: string; after: boolean };
 
 /**
  * The waypoint list: one row per waypoint, each a geocoding combobox, plus the
@@ -45,7 +83,16 @@ export class WaypointsView {
   private readonly rows = new Map<string, WaypointRow>();
 
   /** Set while a row is being dragged, so the drop target can be resolved. */
-  private dragIndex: number | null = null;
+  private drag: DragSession | null = null;
+
+  /**
+   * Waypoint whose field takes the caret as soon as its row exists.
+   *
+   * The row is not there when the stop is added — the session announces the
+   * change and the panel renders on the next frame — so the intent is parked
+   * here and acted on by the render that builds the row.
+   */
+  private focusOnRender: string | null = null;
 
   constructor(context: RoutingPanelContext) {
     this.context = context;
@@ -79,7 +126,7 @@ export class WaypointsView {
     const { maxWaypoints, renderers, labels, formatters } = this.context.options;
 
     const custom = renderers.waypointRow;
-    const fragment = document.createDocumentFragment();
+    const elements: HTMLElement[] = [];
     const seen = new Set<string>();
 
     waypoints.forEach((waypoint, index) => {
@@ -87,12 +134,7 @@ export class WaypointsView {
       const role = index === 0 ? "origin" : index === waypoints.length - 1 ? "destination" : "stop";
 
       const replacement = custom?.({ waypoint, index, count: waypoints.length, role, control: this.context.control, labels, formatters });
-      if (replacement) {
-        fragment.append(replacement);
-        return;
-      }
-
-      fragment.append(this.renderRow(waypoint, index, waypoints.length, role));
+      elements.push(replacement ?? this.renderRow(waypoint, index, waypoints.length, role));
     });
 
     for (const [id, row] of this.rows) {
@@ -101,24 +143,57 @@ export class WaypointsView {
       this.rows.delete(id);
     }
 
-    this.list.replaceChildren(fragment);
+    this.writeRows(elements);
     this.addStopButton.disabled = waypoints.length >= maxWaypoints;
     setBooleanAttribute(this.addStopButton, "aria-disabled", waypoints.length >= maxWaypoints);
+
+    // cleared whether or not the row turned up, so a request from a render ago
+    // cannot steal the caret later
+    const focusId = this.focusOnRender;
+    this.focusOnRender = null;
+    if (focusId !== null) this.rows.get(focusId)?.input.focus();
   }
 
   /**
-   * Drags the row rather than the handle.
+   * Puts the rows in the list, in order, touching the DOM as little as it can.
    *
-   * The browser would otherwise use the handle alone, a 24px square, which
-   * says nothing about what is being moved. The picture is a copy of the row
-   * without its delete button — there is nothing to delete mid-drag — on a
-   * solid background, since the real row is translucent while it moves.
+   * Rows are reused across renders, so most render passes want the same
+   * elements in the same places — and writing them anyway is not free: taking a
+   * row out of the document, even to put it straight back, blurs whatever was
+   * focused inside it and loses the caret with it. A render can be triggered by
+   * something the visitor is not doing — a position arriving, a route
+   * recalculating — so that would pull the field out from under them mid-word.
    *
-   * The copy lives inside the panel so the panel's own styles apply to it, and
-   * is parked off-screen: `setDragImage` needs something rendered, and the
-   * browser has taken its snapshot by the time the frame ends.
+   * The common case is therefore compared and skipped, and the reorder that
+   * does have to move rows puts the focus and the selection back afterwards.
    */
-  private setRowDragImage(transfer: DataTransfer, row: WaypointRow, event: DragEvent): void {
+  private writeRows(elements: HTMLElement[]): void {
+    const current = [...this.list.children];
+    if (current.length === elements.length && current.every((node, index) => node === elements[index])) return;
+
+    const active = document.activeElement;
+    const focused = active instanceof HTMLElement && this.list.contains(active) ? active : null;
+    const selection = focused instanceof HTMLInputElement ? { start: focused.selectionStart, end: focused.selectionEnd } : null;
+
+    this.list.replaceChildren(...elements);
+
+    // a field that belonged to a row this render dropped is gone for good; only
+    // one that is still on the page can be handed the caret back
+    if (!focused || !this.list.contains(focused)) return;
+
+    focused.focus();
+    if (selection && focused instanceof HTMLInputElement) focused.setSelectionRange(selection.start, selection.end);
+  }
+
+  /**
+   * Builds the copy of the row that is carried under the pointer.
+   *
+   * It is the whole row rather than the handle — a 24px square says nothing
+   * about what is being moved — minus its delete button and any open
+   * suggestion list, neither of which is part of what is being carried. The
+   * copy lives inside the panel so the panel's own styles apply to it.
+   */
+  private createGhost(row: WaypointRow): HTMLElement {
     const remove = row.element.querySelector<HTMLElement>(`.${RC.waypointRemove}`);
     const gap = parseFloat(getComputedStyle(row.element).gap) || 0;
     const width = row.element.getBoundingClientRect().width - (remove ? remove.getBoundingClientRect().width + gap : 0);
@@ -129,39 +204,62 @@ export class WaypointsView {
     ghost.classList.add(RC.waypointGhost);
     ghost.style.width = `${width.toString()}px`;
 
-    this.element.append(ghost);
-    const origin = row.element.getBoundingClientRect();
-    transfer.setDragImage(ghost, event.clientX - origin.left, event.clientY - origin.top);
-
-    // the snapshot is taken synchronously; the copy is only needed until then
-    requestAnimationFrame(() => {
-      ghost.remove();
+    // `cloneNode` copies the value *attribute*; the address in the field is a
+    // property the panel writes, so without this the carried row comes up with
+    // an empty field
+    const sources = [...row.element.querySelectorAll("input")];
+    ghost.querySelectorAll("input").forEach((clone, index) => {
+      const source = sources.at(index);
+      if (source) clone.value = source.value;
     });
+
+    this.element.append(ghost);
+    return ghost;
+  }
+
+  /**
+   * Moves the carried copy to the pointer.
+   *
+   * MapLibre gives every `.maplibregl-ctrl` a `transform: translate(0)`, so a
+   * fixed element inside the panel is positioned against the control root
+   * rather than the viewport. Rather than guess which ancestor that is, the
+   * copy is parked at the origin and measured — the same correction
+   * {@link placeFloating} makes for the menus.
+   */
+  private placeGhost(drag: DragSession, clientX: number, clientY: number): void {
+    const ghost = drag.ghost;
+    if (!ghost) return;
+
+    ghost.style.left = "0px";
+    ghost.style.top = "0px";
+    const origin = ghost.getBoundingClientRect();
+
+    ghost.style.left = `${(clientX - drag.offsetX - origin.left).toString()}px`;
+    ghost.style.top = `${(clientY - drag.offsetY - origin.top).toString()}px`;
   }
 
   /**
    * Draws the line the row would land on.
    *
-   * Which side of the row it lands on depends on where the pointer is in it:
-   * above the middle means before this row, below means after. Without it a
+   * Which side of a row it lands on depends on where the pointer is against
+   * that row's middle: above means before it, below means after. Without it a
    * drag says nothing about where the row is going.
    */
-  private markDropTarget(row: WaypointRow, event: DragEvent): void {
-    const rect = row.element.getBoundingClientRect();
-    const side = event.clientY > rect.top + rect.height / 2 ? "after" : "before";
+  private markDropTarget(clientY: number): void {
+    const target = this.rowAt(clientY);
 
     for (const other of this.rows.values()) {
-      if (other === row) continue;
-      delete other.element.dataset.drop;
+      if (other !== target?.row) delete other.element.dataset.drop;
     }
 
+    if (!target) return;
     // the row being dragged is where it already is; a line on it means nothing
-    if (this.dragIndex !== null && this.indexOf(this.idOf(row)) === this.dragIndex) {
-      delete row.element.dataset.drop;
+    if (target.row === this.drag?.row) {
+      delete target.row.element.dataset.drop;
       return;
     }
 
-    row.element.dataset.drop = side;
+    target.row.element.dataset.drop = target.after ? "after" : "before";
   }
 
   /** Removes every drop line. */
@@ -169,24 +267,41 @@ export class WaypointsView {
     for (const row of this.rows.values()) delete row.element.dataset.drop;
   }
 
-  /** Where the dragged row lands, given which half of the target it was dropped on. */
-  private dropIndex(row: WaypointRow, event: DragEvent, id: string): number {
-    const rect = row.element.getBoundingClientRect();
-    const target = this.indexOf(id);
-    const after = event.clientY > rect.top + rect.height / 2;
+  /**
+   * The row a pointer position drops onto.
+   *
+   * The nearest row centre rather than the row actually under the pointer:
+   * rows are 8px apart, and the gaps — along with everything above the first
+   * row and below the last — would otherwise leave the drag with no target and
+   * no line to show for it.
+   */
+  private rowAt(clientY: number): DropTarget | null {
+    let best: DropTarget | null = null;
+    let bestDistance = Number.POSITIVE_INFINITY;
+
+    for (const [id, row] of this.rows) {
+      const rect = row.element.getBoundingClientRect();
+      if (rect.height === 0) continue; // a row that is not rendered is not a target
+
+      const centre = rect.top + rect.height / 2;
+      const distance = Math.abs(clientY - centre);
+      if (distance >= bestDistance) continue;
+
+      bestDistance = distance;
+      best = { row, id, after: clientY > centre };
+    }
+
+    return best;
+  }
+
+  /** Where the dragged row lands, given which edge of the target it fell against. */
+  private dropIndex(from: number, target: DropTarget): number {
+    const to = this.indexOf(target.id);
 
     // dropping below a row that sits above the dragged one puts it in that
     // row's place; the indices either side of the gap are the same move
-    if (!after) return this.dragIndex !== null && this.dragIndex < target ? Math.max(target - 1, 0) : target;
-    return this.dragIndex !== null && this.dragIndex > target ? target + 1 : target;
-  }
-
-  /** The waypoint id a row belongs to. */
-  private idOf(row: WaypointRow): string {
-    for (const [id, candidate] of this.rows) {
-      if (candidate === row) return id;
-    }
-    return "";
+    if (!target.after) return from < to ? Math.max(to - 1, 0) : to;
+    return from > to ? to + 1 : to;
   }
 
   /** Shows the in-field clear button only when there is something to clear. */
@@ -246,7 +361,9 @@ export class WaypointsView {
     const element = el("li", RC.waypoint);
 
     const handle = button(RC.waypointHandle, labels.reorderStop, "drag");
-    handle.draggable = true;
+    // the reorder is driven by pointer events (see beginDrag); a native drag
+    // source would race with them and hand the cursor to the browser
+    handle.draggable = false;
 
     const field = el("div", RC.waypointField);
     const pin = icon("pin-marker");
@@ -307,8 +424,8 @@ export class WaypointsView {
       this.syncClearButton(row);
       if (!search.enabled) return;
       const { lng, lat } = this.context.map.getCenter();
-      this.context.geocoder.search(row.input.value, [lng, lat], (features) => {
-        row.suggestions = features;
+      this.context.geocoder.search(row.input.value, [lng, lat], (places) => {
+        row.suggestions = places;
         row.activeSuggestion = -1;
         this.renderSuggestions(row, id);
       });
@@ -345,39 +462,22 @@ export class WaypointsView {
     });
 
     const handle = row.element.querySelector<HTMLElement>(`.${RC.waypointHandle}`);
-    handle?.addEventListener("dragstart", (event) => {
-      this.dragIndex = this.indexOf(id);
-      setDataFlag(row.element, "dragging", true);
-
-      const transfer = (event as DragEvent).dataTransfer;
-      transfer?.setData("text/plain", id);
-      // a move, not a copy: without this the pointer carries a plus sign
-      if (transfer) transfer.effectAllowed = "move";
-      if (transfer) this.setRowDragImage(transfer, row, event as DragEvent);
+    handle?.addEventListener("pointerdown", (event) => {
+      this.beginDrag(event, row, id, handle);
     });
 
-    handle?.addEventListener("dragend", () => {
-      this.dragIndex = null;
-      setDataFlag(row.element, "dragging", false);
-      this.clearDropTargets();
+    // pointer capture sends every later event to the handle, so these three
+    // cover the whole drag wherever the pointer travels
+    handle?.addEventListener("pointermove", (event) => {
+      this.moveDrag(event);
     });
 
-    row.element.addEventListener("dragover", (event) => {
-      if (this.dragIndex === null) return;
-      event.preventDefault();
-      const transfer = (event as DragEvent).dataTransfer;
-      if (transfer) transfer.dropEffect = "move";
-      this.markDropTarget(row, event as DragEvent);
+    handle?.addEventListener("pointerup", (event) => {
+      this.finishDrag(event);
     });
 
-    row.element.addEventListener("drop", (event) => {
-      if (this.dragIndex === null) return;
-      event.preventDefault();
-
-      const target = this.dropIndex(row, event as DragEvent, id);
-      this.clearDropTargets();
-      this.context.routing.moveWaypoint(this.dragIndex, target);
-      this.dragIndex = null;
+    handle?.addEventListener("pointercancel", () => {
+      this.endDrag();
     });
 
     // keyboard reordering, since a drag handle is unusable without a pointer
@@ -396,6 +496,100 @@ export class WaypointsView {
     void formatters;
   }
 
+  /**
+   * Takes hold of a row, without moving anything yet.
+   *
+   * The press is not a drag until the pointer has travelled
+   * {@link DRAG_THRESHOLD}: a plain click on the handle has to keep focusing it,
+   * which is how the keyboard reordering above is reached. Pointer capture is
+   * taken straight away all the same, so a fast drag cannot outrun the handle.
+   */
+  private beginDrag(event: PointerEvent, row: WaypointRow, id: string, handle: HTMLElement): void {
+    if (this.drag) return;
+    if (!this.context.options.reorderWaypoints) return;
+    // the primary button only, and never a two-finger or right-click gesture
+    if (event.button !== 0) return;
+
+    const rect = row.element.getBoundingClientRect();
+    const onKeydown = (keyEvent: KeyboardEvent): void => {
+      if (keyEvent.key !== "Escape") return;
+      keyEvent.preventDefault();
+      this.endDrag();
+    };
+
+    this.drag = {
+      id,
+      index: this.indexOf(id),
+      row,
+      handle,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top,
+      ghost: null,
+      cursor: null,
+      onKeydown,
+    };
+
+    handle.setPointerCapture(event.pointerId);
+    document.addEventListener("keydown", onKeydown, true);
+  }
+
+  /** Follows the pointer: starts the drag once it has moved, then carries the row. */
+  private moveDrag(event: PointerEvent): void {
+    const drag = this.drag;
+    if (!drag || event.pointerId !== drag.pointerId) return;
+
+    if (!drag.ghost) {
+      const travelled = Math.max(Math.abs(event.clientX - drag.startX), Math.abs(event.clientY - drag.startY));
+      if (travelled < DRAG_THRESHOLD) return;
+
+      drag.ghost = this.createGhost(drag.row);
+      setDataFlag(drag.row.element, "dragging", true);
+      // the closed hand belongs to the whole gesture, not just to the handle:
+      // the flag carries it across the list, and the page's own cursor is
+      // overridden for everywhere else the pointer may travel
+      setDataFlag(this.list, "dragging", true);
+      drag.cursor = document.body.style.cursor;
+      document.body.style.cursor = "grabbing";
+    }
+
+    // the press has become a drag, so it is no longer a click on the handle
+    event.preventDefault();
+    this.placeGhost(drag, event.clientX, event.clientY);
+    this.markDropTarget(event.clientY);
+  }
+
+  /** Drops the row where the drag left it. */
+  private finishDrag(event: PointerEvent): void {
+    const drag = this.drag;
+    if (!drag || event.pointerId !== drag.pointerId) return;
+
+    // a press that never passed the threshold is a click, not a reorder
+    const target = drag.ghost ? this.rowAt(event.clientY) : null;
+    const to = target && target.row !== drag.row ? this.dropIndex(drag.index, target) : null;
+
+    this.endDrag();
+    if (to !== null) this.context.routing.moveWaypoint(drag.index, to);
+  }
+
+  /** Puts everything the drag changed back, whether it dropped or was cancelled. */
+  private endDrag(): void {
+    const drag = this.drag;
+    if (!drag) return;
+    this.drag = null;
+
+    drag.ghost?.remove();
+    if (drag.cursor !== null) document.body.style.cursor = drag.cursor;
+    if (drag.handle.hasPointerCapture(drag.pointerId)) drag.handle.releasePointerCapture(drag.pointerId);
+    document.removeEventListener("keydown", drag.onKeydown, true);
+
+    setDataFlag(drag.row.element, "dragging", false);
+    setDataFlag(this.list, "dragging", false);
+    this.clearDropTargets();
+  }
+
   private handleKeydown(event: KeyboardEvent, row: WaypointRow, id: string): void {
     if (row.list.hidden || row.suggestions.length === 0) {
       if (event.key === "ArrowDown" && row.suggestions.length > 0) this.openSuggestions(row);
@@ -411,10 +605,10 @@ export class WaypointsView {
       row.activeSuggestion = row.activeSuggestion <= 0 ? row.suggestions.length - 1 : row.activeSuggestion - 1;
       this.renderSuggestions(row, id);
     } else if (event.key === "Enter") {
-      const feature = row.suggestions.at(row.activeSuggestion === -1 ? 0 : row.activeSuggestion);
-      if (feature) {
+      const place = row.suggestions.at(row.activeSuggestion === -1 ? 0 : row.activeSuggestion);
+      if (place) {
         event.preventDefault();
-        this.pick(feature, row, id);
+        this.pick(place, row, id);
       }
     } else if (event.key === "Escape") {
       this.closeSuggestions(row);
@@ -512,8 +706,6 @@ export class WaypointsView {
   }
 
   private renderSuggestions(row: WaypointRow, id: string): void {
-    const { formatters } = this.context.options;
-
     if (row.suggestions.length === 0) {
       this.closeSuggestions(row);
       return;
@@ -521,23 +713,25 @@ export class WaypointsView {
 
     const fragment = document.createDocumentFragment();
 
-    row.suggestions.forEach((feature, index) => {
+    row.suggestions.forEach((place, index) => {
       const option = el("li", RC.suggestion);
       option.id = `${row.list.id}-option-${index.toString()}`;
       option.setAttribute("role", "option");
       setBooleanAttribute(option, "aria-selected", index === row.activeSuggestion);
       setDataFlag(option, "active", index === row.activeSuggestion);
 
-      const primary = (feature as { text?: string }).text ?? "";
       const lines = el("span", RC.suggestionLines);
-      lines.append(el("span", RC.suggestionPrimary, primary), el("span", RC.suggestionSecondary, formatters.waypointLabel(feature)));
+      lines.append(el("span", RC.suggestionPrimary, place.name));
+      // a result whose two lines would say the same thing gets one: that is what
+      // a provider with a single string to offer produces
+      if (place.label !== place.name) lines.append(el("span", RC.suggestionSecondary, place.label));
       option.append(icon("place-area"), lines);
 
       // pointerdown, not click: the input's blur would otherwise tear the list
       // down before a click could land on it
       option.addEventListener("pointerdown", (event) => {
         event.preventDefault();
-        this.pick(feature, row, id);
+        this.pick(place, row, id);
       });
 
       fragment.append(option);
@@ -607,21 +801,22 @@ export class WaypointsView {
     for (const row of this.rows.values()) this.closeSuggestions(row);
   }
 
-  private pick(feature: GeocodingFeature, row: WaypointRow, id: string): void {
-    const { formatters } = this.context.options;
-    const [lon, lat] = feature.center;
-
+  private pick(place: RoutingPlace, row: WaypointRow, id: string): void {
     row.editing = false;
-    row.input.value = formatters.waypointLabel(feature);
+    row.input.value = place.label;
     this.closeSuggestions(row);
-    this.context.routing.updateWaypoint(id, { lngLat: [lon, lat], label: formatters.waypointLabel(feature) });
+    this.context.routing.updateWaypoint(id, { lngLat: place.lngLat, label: place.label });
   }
 
   private addStop(): void {
     const waypoints = this.context.routing.getWaypoints();
     // a new stop belongs before the destination, which is where a user adding
     // one to an existing route expects it
-    this.context.routing.addWaypoint({}, Math.max(waypoints.length - 1, 0));
+    const added = this.context.routing.addWaypoint({}, Math.max(waypoints.length - 1, 0));
+
+    // an empty stop is added in order to be filled in: the caret goes to it, so
+    // the next keystroke lands there instead of needing a click first
+    this.focusOnRender = added.id;
   }
 
   private indexOf(id: string): number {

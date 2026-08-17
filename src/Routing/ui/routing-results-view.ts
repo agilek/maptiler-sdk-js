@@ -1,9 +1,19 @@
-import { classifyRoutingError } from "../routing-errors";
+import { RoutingErrorReason, classifyRoutingError } from "../routing-errors";
 import type { Route } from "../types";
 import type { RoutingPanelContext } from "./routing-ui-context";
 import { RC, maneuverIconId } from "./routing-ui-defaults";
-import { button, el, icon, setBooleanAttribute, setDataFlag } from "./routing-ui-dom";
+import { button, el, focusQuietly, icon, setBooleanAttribute, setDataFlag } from "./routing-ui-dom";
 import type { RoutingPanelStatus } from "./routing-ui-types";
+
+/**
+ * Failures that mean "there is no such route" rather than "something broke".
+ *
+ * They read to the visitor exactly like a response with no routes in it, so they
+ * are shown the same way: the not-found drawing, with the reason as its hint.
+ * Everything else — a rejected key, a spent quota, an outage — stays a red card,
+ * because no change of stops or transport mode will fix it.
+ */
+const NOT_FOUND_REASONS: ReadonlySet<string> = new Set([RoutingErrorReason.NO_ROUTE, RoutingErrorReason.UNREACHABLE, RoutingErrorReason.TOO_FAR]);
 
 /**
  * The results half of the panel: the status line, the route cards, and the
@@ -31,6 +41,17 @@ export class ResultsView {
   /** The card that opened the detail view, so focus can be returned to it. */
   private detailOpener: HTMLElement | null = null;
 
+  /**
+   * The "no routes found" state: the drawing, the heading and the hint.
+   *
+   * A dead end is the one status worth more than a line of grey text — it is
+   * where the visitor is stuck, and the hint is what unsticks them — so it takes
+   * the place the cards would have had (RoutingPanel/not-found).
+   */
+  private readonly emptyElement: HTMLElement;
+  private readonly emptyTitle: HTMLElement;
+  private readonly emptyHint: HTMLElement;
+
   constructor(context: RoutingPanelContext) {
     this.context = context;
     const { labels } = context.options;
@@ -38,6 +59,19 @@ export class ResultsView {
     this.statusElement = el("p", RC.status);
     this.statusElement.setAttribute("role", "status");
     this.statusElement.setAttribute("aria-live", "polite");
+
+    const art = el("span", RC.emptyArt);
+    art.setAttribute("aria-hidden", "true");
+    this.emptyTitle = el("p", RC.emptyTitle, labels.noRoutes);
+    this.emptyHint = el("p", RC.emptyHint, labels.noRoutesHint);
+
+    this.emptyElement = el("div", RC.empty);
+    // its own live region: the status line goes quiet for this state, so the
+    // words are announced once rather than twice
+    this.emptyElement.setAttribute("role", "status");
+    this.emptyElement.setAttribute("aria-live", "polite");
+    this.emptyElement.hidden = true;
+    this.emptyElement.append(art, this.emptyTitle, this.emptyHint);
 
     this.errorElement = el("p", RC.error);
     this.errorElement.setAttribute("role", "alert");
@@ -74,8 +108,10 @@ export class ResultsView {
     this.detailElement.hidden = true;
     this.detailElement.append(detailTop, this.detailSummary, this.stepsList);
 
-    this.element = el("div");
-    this.element.append(this.statusElement, this.errorElement, this.skeleton, this.routesList, this.detailElement);
+    // classed rather than bare: the turn-by-turn layout needs a flex chain from
+    // the panel body down to the step list, and this is a link in it
+    this.element = el("div", RC.results);
+    this.element.append(this.statusElement, this.emptyElement, this.errorElement, this.skeleton, this.routesList, this.detailElement);
   }
 
   //#region State
@@ -125,29 +161,38 @@ export class ResultsView {
     if (replacement) {
       this.statusElement.replaceChildren(replacement);
       this.errorElement.hidden = true;
+      // a consumer's status element speaks for every state, this one included
+      this.emptyElement.hidden = true;
       return;
     }
 
-    this.errorElement.hidden = this.status !== "error";
-    if (this.status === "error") {
+    // The service answers an unroutable pair two ways: a response with no routes
+    // in it, and an error saying it found none. Both are the same dead end to
+    // the visitor, so both get the drawing rather than a red card — which is
+    // kept for failures they can do nothing about (a key, a quota, an outage).
+    const reason = this.status === "error" ? classifyRoutingError(this.error) : null;
+    const foundNothing = this.status === "empty" || (reason !== null && NOT_FOUND_REASONS.has(reason));
+
+    this.errorElement.hidden = !(this.status === "error" && !foundNothing);
+    if (this.status === "error" && reason !== null) {
       // the service's own sentence is a developer's message: it names an
       // internal limit rather than the thing the visitor can do about it. It
       // stays on the title, and in the `routingerror` event, for debugging.
-      const reason = classifyRoutingError(this.error);
       this.errorElement.textContent = labels.errors[reason] ?? labels.error;
       this.errorElement.title = this.error?.message ?? "";
     }
 
-    const text =
-      this.status === "loading"
-        ? routes.length === 0
-          ? labels.loading
-          : labels.recalculating
-        : this.status === "empty"
-          ? labels.noRoutes
-          : this.status === "idle"
-            ? labels.needsWaypoints
-            : "";
+    // "empty" is drawn rather than written: the block below says it, so the line
+    // has nothing to add
+    const text = this.status === "loading" ? (routes.length === 0 ? labels.loading : labels.recalculating) : this.status === "idle" ? labels.needsWaypoints : "";
+
+    this.emptyTitle.textContent = labels.noRoutes;
+    // A not-found reason is more specific than the generic hint — it names the
+    // mode, or the stop that is off the road — so it wins when there is one.
+    // Any other reason belongs to the red card, and must not leak in here.
+    this.emptyHint.textContent = (foundNothing && reason !== null ? labels.errors[reason] : undefined) ?? labels.noRoutesHint;
+    this.emptyHint.title = (foundNothing ? this.error?.message : "") ?? "";
+    this.emptyElement.hidden = !foundNothing || this.isDetailOpen();
 
     // the skeleton stands in for the results for as long as a request is in
     // flight, first one or a later one: a recalculation replaces every card, so
@@ -304,10 +349,13 @@ export class ResultsView {
     this.detailElement.hidden = false;
     this.routesList.hidden = true;
     this.statusElement.hidden = true;
+    this.emptyElement.hidden = true;
     this.skeleton.hidden = true;
     this.errorElement.hidden = true;
     this.renderSteps();
-    this.detailElement.querySelector<HTMLButtonElement>(`.${RC.detailBack}`)?.focus();
+    // the keyboard must not be left on the hidden list, but a pointer click
+    // that opened this view should not leave a ring behind either
+    focusQuietly(this.detailElement.querySelector<HTMLButtonElement>(`.${RC.detailBack}`));
     this.context.control.fire("routinguiviewchange", { view: "detail" });
   }
 
@@ -316,7 +364,7 @@ export class ResultsView {
     this.detailElement.hidden = true;
     this.routesList.hidden = false;
     this.render();
-    this.detailOpener?.focus();
+    focusQuietly(this.detailOpener);
     this.detailOpener = null;
     this.context.control.fire("routinguiviewchange", { view: "list" });
   }

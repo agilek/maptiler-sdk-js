@@ -1,6 +1,6 @@
 import { placeFloating } from "./routing-floating";
 import { RC } from "./routing-ui-defaults";
-import { el, icon, setBooleanAttribute, setDataFlag } from "./routing-ui-dom";
+import { el, focusQuietly, icon, setBooleanAttribute, setDataFlag } from "./routing-ui-dom";
 
 /**
  * A filter dropdown: a pill that opens a panel below it.
@@ -86,7 +86,7 @@ export class Dropdown {
       if (event.key !== "Escape" || !this.opened) return;
       event.stopPropagation();
       this.close();
-      this.toggle.focus();
+      focusQuietly(this.toggle);
     });
   }
 

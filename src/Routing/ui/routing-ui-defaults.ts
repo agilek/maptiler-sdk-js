@@ -9,6 +9,8 @@ import type {
   RoutingControlRenderers,
   RoutingControlTheme,
   RoutingFilter,
+  RoutingReverseProvider,
+  RoutingSearchProvider,
   RoutingModeConfig,
   RoutingModeDisplay,
   RoutingClickToAdd,
@@ -69,10 +71,15 @@ export const RC = Object.freeze({
   switch: "maptiler-routing-switch",
 
   status: "maptiler-routing-status",
+  empty: "maptiler-routing-empty",
+  emptyArt: "maptiler-routing-empty-art",
+  emptyTitle: "maptiler-routing-empty-title",
+  emptyHint: "maptiler-routing-empty-hint",
   error: "maptiler-routing-error",
   skeleton: "maptiler-routing-skeleton",
   skeletonCard: "maptiler-routing-skeleton-card",
 
+  results: "maptiler-routing-results",
   routes: "maptiler-routing-routes",
   routeCard: "maptiler-routing-route-card",
   routeBody: "maptiler-routing-route-body",
@@ -95,44 +102,6 @@ export const RC = Object.freeze({
 
   icon: "maptiler-routing-icon",
   srOnly: "maptiler-routing-sr-only",
-});
-
-//#endregion
-
-//#region Theme
-
-/**
- * Maps a {@link RoutingControlTheme} key to its CSS custom property.
- *
- * The property defaults live in the stylesheet, not here: the panel must look
- * right with no JavaScript-set variables at all, so the theme option only ever
- * writes overrides.
- */
-export const CSS_VARS: Readonly<Record<keyof RoutingControlTheme, string>> = Object.freeze({
-  accent: "--maptiler-routing-accent",
-  accentContrast: "--maptiler-routing-accent-contrast",
-  surface: "--maptiler-routing-surface",
-  surfaceAlt: "--maptiler-routing-surface-alt",
-  surfaceHover: "--maptiler-routing-surface-hover",
-  textColor: "--maptiler-routing-text-color",
-  mutedColor: "--maptiler-routing-muted-color",
-  borderColor: "--maptiler-routing-border-color",
-  fieldHover: "--maptiler-routing-field-hover",
-  pinColor: "--maptiler-routing-pin-color",
-  modeIconColor: "--maptiler-routing-mode-icon-color",
-  dangerColor: "--maptiler-routing-danger-color",
-  dangerSurface: "--maptiler-routing-danger-surface",
-  skeletonColor: "--maptiler-routing-skeleton-color",
-  skeletonHighlight: "--maptiler-routing-skeleton-highlight",
-  radius: "--maptiler-routing-radius",
-  radiusSmall: "--maptiler-routing-radius-small",
-  width: "--maptiler-routing-width",
-  maxHeight: "--maptiler-routing-max-height",
-  fontFamily: "--maptiler-routing-font-family",
-  shadow: "--maptiler-routing-shadow",
-  listShadow: "--maptiler-routing-list-shadow",
-  stepDivider: "--maptiler-routing-step-divider",
-  placeholderColor: "--maptiler-routing-placeholder-color",
 });
 
 //#endregion
@@ -243,7 +212,8 @@ export const DEFAULT_LABELS: Required<RoutingControlLabels> = Object.freeze({
   recalculating: "Recalculating…",
   loading: "Calculating the route…",
   needsWaypoints: "Pick a start and a destination to see routes.",
-  noRoutes: "No route between these points for this transport mode.",
+  noRoutes: "No routes found",
+  noRoutesHint: "Try changing your start point, destination, or transport mode.",
   error: "The routing request failed.",
   errors: {
     tooFar: "This route is too long for this transport mode. Try another mode, or bring the stops closer together.",
@@ -284,18 +254,33 @@ export const DEFAULT_LABELS: Required<RoutingControlLabels> = Object.freeze({
   speedHint: "Your average speed is used for time estimates and doesn’t affect route selection.",
 });
 
-/** Built-in formatters. */
-export const DEFAULT_FORMATTERS: Required<RoutingControlFormatters> = Object.freeze({
-  distance: formatRouteDistance,
-  duration: formatRouteDuration,
-  arrival: (seconds: number) => formatRouteArrival(seconds),
-  routeDescription: describeRouteUsage,
-  // typed as always present, but both fields are optional in practice
-  waypointLabel: (feature) => {
-    const { place_name: placeName, text } = feature as { place_name?: string; text?: string };
-    return placeName ?? text ?? "";
-  },
-});
+/**
+ * Built-in formatters, bound to a language.
+ *
+ * @param language - Language code the values are written in. Defaults to the
+ * runtime's own locale.
+ *
+ * @remarks
+ * Every value the panel prints goes through `Intl` with this language, so
+ * `config.primaryLanguage` reaches the numbers, the units and the clock even
+ * though the SDK ships no translated labels.
+ */
+export function defaultFormatters(language?: string): Required<RoutingControlFormatters> {
+  return {
+    distance: (length, units) => formatRouteDistance(length, units, language),
+    duration: (seconds) => formatRouteDuration(seconds, language),
+    arrival: (seconds) => formatRouteArrival(seconds, undefined, language),
+    // the only default with prose in it, and the only one a language cannot
+    // reach: there is no locale data for a sentence. Override it, as with the
+    // labels, to say it in another language.
+    routeDescription: describeRouteUsage,
+    // typed as always present, but both fields are optional in practice
+    waypointLabel: (feature) => {
+      const { place_name: placeName, text } = feature as { place_name?: string; text?: string };
+      return placeName ?? text ?? "";
+    },
+  };
+}
 
 //#endregion
 
@@ -309,6 +294,10 @@ export type ResolvedSearchOptions = {
   limit: number;
   country?: readonly string[];
   proximity: boolean;
+  /** Absent means MapTiler Geocoding, which is the default. */
+  provider?: RoutingSearchProvider;
+  /** Absent means MapTiler Geocoding. */
+  reverse?: RoutingReverseProvider;
 };
 
 /** Turn-by-turn configuration after defaults have been applied. */
@@ -349,7 +338,6 @@ export type ResolvedControlOptions = {
   labels: Required<RoutingControlLabels>;
   formatters: Required<RoutingControlFormatters>;
   theme: RoutingControlTheme;
-  cssVariables: Record<string, string>;
   renderers: RoutingControlRenderers;
   onCreate?: (root: HTMLElement, control: never) => void;
 };
@@ -387,11 +375,17 @@ export function resolveControlOptions(options: MaptilerRoutingControlOptions = {
   const search = typeof options.search === "object" ? options.search : {};
   const turnByTurn = typeof options.turnByTurn === "object" ? options.turnByTurn : {};
 
+  // Language modes such as STYLE or VISITOR carry a null code — there is no one
+  // language to ask for, so this falls through to the runtime's own locale, as
+  // the session does for the service's instructions.
+  const language = options.language ?? config.primaryLanguage.code ?? undefined;
+
   return {
     position: options.position ?? "top-left",
     launcher: options.launcher ?? true,
-    // with no launcher there is nothing to open it with, so it starts open
-    open: options.open ?? options.launcher === false,
+    // the panel is the control's point, so it starts expanded; the launcher is
+    // there to close it again
+    open: options.open ?? true,
     className: options.className,
     unstyled: options.unstyled ?? false,
     modes: (options.modes ?? DEFAULT_MODES).map((mode) => (typeof mode === "string" ? { id: mode } : mode)),
@@ -402,7 +396,7 @@ export function resolveControlOptions(options: MaptilerRoutingControlOptions = {
     avoidances: options.avoidances ?? DEFAULT_AVOIDANCES,
     units: options.units === "km" || options.units === "mi" ? options.units : detectUnits(),
     unitsSwitchable: options.units === "shown",
-    language: options.language,
+    language,
     alternates: options.alternates ?? 2,
     maxWaypoints: options.maxWaypoints ?? DEFAULT_MAX_WAYPOINTS,
     waypoints: options.waypoints,
@@ -412,6 +406,8 @@ export function resolveControlOptions(options: MaptilerRoutingControlOptions = {
       debounceMs: search.debounceMs ?? DEFAULT_SEARCH_DEBOUNCE_MS,
       limit: search.limit ?? DEFAULT_SEARCH_LIMIT,
       country: search.country,
+      provider: search.provider,
+      reverse: search.reverse,
       proximity: search.proximity ?? true,
     },
     clickToAddWaypoint: options.clickToAddWaypoint ?? "armed",
@@ -434,9 +430,10 @@ export function resolveControlOptions(options: MaptilerRoutingControlOptions = {
       vehicleFields: { ...DEFAULT_LABELS.vehicleFields, ...options.labels?.vehicleFields },
       bicycleTypes: { ...DEFAULT_LABELS.bicycleTypes, ...options.labels?.bicycleTypes },
     },
-    formatters: { ...DEFAULT_FORMATTERS, ...options.formatters },
-    theme: options.theme ?? {},
-    cssVariables: options.cssVariables ?? {},
+    formatters: { ...defaultFormatters(language), ...options.formatters },
+    // "auto" is the reader's own choice, which is the right default for a
+    // control dropped onto someone else's page
+    theme: options.theme ?? "auto",
     renderers: options.renderers ?? {},
     onCreate: options.onCreate as ResolvedControlOptions["onCreate"],
   };

@@ -7,10 +7,10 @@ import type { RoutingConfigChange } from "../types";
 import { FiltersView } from "./routing-filters-view";
 import { RoutingGeocoder } from "./routing-geocoder";
 import { ResultsView } from "./routing-results-view";
-import { CSS_VARS, RC, resolveControlOptions, type ResolvedControlOptions } from "./routing-ui-defaults";
+import { RC, resolveControlOptions, type ResolvedControlOptions } from "./routing-ui-defaults";
 import type { RoutingPanelContext } from "./routing-ui-context";
 import { RenderQueue, button, el, setBooleanAttribute, setDataFlag } from "./routing-ui-dom";
-import type { MaptilerRoutingControlOptions, RoutingControlTheme, RoutingPanelStatus } from "./routing-ui-types";
+import type { MaptilerRoutingControlOptions, RoutingPanelStatus } from "./routing-ui-types";
 import { WaypointsView } from "./routing-waypoints-view";
 
 /** Regions the panel re-renders independently. */
@@ -46,7 +46,7 @@ const MAPS_WITH_PANEL = new WeakSet<SDKMap>();
  *   new MaptilerRoutingControl({
  *     modes: ["car", "bicycle"],
  *     filters: ["departure", "units"],
- *     theme: { accent: "#e2001a" },
+ *     theme: "dark",
  *   }),
  *   "top-left",
  * );
@@ -115,7 +115,9 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
     MAPS_WITH_PANEL.add(map);
     this.dispose.push(() => MAPS_WITH_PANEL.delete(map));
 
-    const geocoder = new RoutingGeocoder(this.options.search);
+    // `waypointLabel` writes out a MapTiler result; a `search.provider` states
+    // its own text and never reaches it
+    const geocoder = new RoutingGeocoder(this.options.search, this.options.language, this.options.formatters.waypointLabel);
     this.geocoder = geocoder;
     this.queue = new RenderQueue((regions) => {
       this.flush(regions);
@@ -255,18 +257,20 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
     return root;
   }
 
-  /** Writes the theme values as CSS custom properties on the panel root. */
+  /**
+   * Names the palette on the panel root.
+   *
+   * Both palettes live in the stylesheet, so this writes a flag and nothing
+   * else. `auto` writes no flag at all: with no `data-theme` to exclude it, the
+   * stylesheet's `prefers-color-scheme` rule is what decides, and it keeps
+   * deciding when the reader changes their setting mid-session.
+   */
   private applyTheme(): void {
     if (!this.root) return;
 
-    for (const [key, value] of Object.entries(this.options.theme)) {
-      const property = CSS_VARS[key as keyof RoutingControlTheme];
-      if (property && value) this.root.style.setProperty(property, value);
-    }
-
-    for (const [property, value] of Object.entries(this.options.cssVariables)) {
-      this.root.style.setProperty(property, value);
-    }
+    const theme = this.options.theme;
+    if (theme === "auto") delete this.root.dataset.theme;
+    else this.root.dataset.theme = theme;
   }
 
   /**

@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { config } from "../../src/config";
+import { Language } from "../../src/language";
 import { DEFAULT_MANEUVER_ICON, maneuverIconId, resolveControlOptions } from "../../src/Routing/ui/routing-ui-defaults";
 
 //#region maneuverIconId
@@ -43,11 +45,47 @@ describe("resolveControlOptions", () => {
     expect(options.filters).toEqual(["mode", "departure", "vehicle", "bicycleType", "speed", "avoidances", "units"]);
     expect(options.clickToAddWaypoint).toBe("armed");
     expect(options.launcher).toBe(true);
-    expect(options.open).toBe(false);
+    expect(options.open).toBe(true);
     expect(options.turnByTurn.enabled).toBe(true);
     expect(options.search.enabled).toBe(true);
     expect(options.modeDisplay).toBe("both");
     expect(options.showSingleMode).toBe(true);
+    expect(options.theme).toBe("auto");
+  });
+
+  it.each(["light", "dark", "auto"] as const)("takes %s as the theme", (theme) => {
+    expect(resolveControlOptions({ theme }).theme).toBe(theme);
+  });
+
+  describe("language", () => {
+    const original = config.primaryLanguage;
+    afterEach(() => {
+      config.primaryLanguage = original;
+    });
+
+    it("follows config.primaryLanguage, down to the formatted values", () => {
+      config.primaryLanguage = Language.FRENCH;
+      const options = resolveControlOptions();
+
+      expect(options.language).toBe("fr");
+      expect(options.formatters.duration(5040)).toBe("1h 24min");
+      expect(options.formatters.distance(9.94, "km")).toBe("9,9\u202fkm");
+    });
+
+    it("lets one panel differ from the map", () => {
+      config.primaryLanguage = Language.GERMAN;
+
+      expect(resolveControlOptions().formatters.duration(840)).toBe("14 Min.");
+      expect(resolveControlOptions({ language: "en" }).formatters.duration(840)).toBe("14m");
+    });
+
+    it("falls through to the runtime locale for a language mode with no code", () => {
+      // STYLE, VISITOR and the like are modes, not languages: there is nothing
+      // to ask Intl or the service for
+      config.primaryLanguage = Language.STYLE;
+
+      expect(resolveControlOptions().language).toBeUndefined();
+    });
   });
 
   it.each(["km", "mi"] as const)("keeps %s fixed, with no toggle for the end user", (units) => {
@@ -73,8 +111,9 @@ describe("resolveControlOptions", () => {
     expect(resolveControlOptions({ modeDisplay }).modeDisplay).toBe(modeDisplay);
   });
 
-  it("opens by default when there is no launcher to open it with", () => {
+  it("starts open, with or without a launcher, unless asked not to", () => {
     expect(resolveControlOptions({ launcher: false }).open).toBe(true);
+    expect(resolveControlOptions({ open: false }).open).toBe(false);
     expect(resolveControlOptions({ launcher: false, open: false }).open).toBe(false);
   });
 

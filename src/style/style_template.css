@@ -188,10 +188,15 @@
    the panel restylable from scratch.
 
    Colors, spacing and typography come from the custom properties declared on
-   the root. They are the public theming contract: set them in your own CSS,
-   or through the control's `theme` / `cssVariables` options. No rule here
-   uses `!important`, and no selector is stronger than two classes, so your
-   own rules win by cascade order.
+   the root. The panel ships two palettes and no more: light, declared here,
+   and dark, declared twice below — once for `data-theme="dark"`, which the
+   control's `theme` option writes, and once behind
+   `prefers-color-scheme: dark` for the default, which follows the reader's own
+   setting. There is no API for individual colors.
+
+   The properties are still readable and still overridable from a stylesheet:
+   no rule here uses `!important`, and no selector is stronger than two
+   classes, so your own rules win by cascade order.
    ───────────────────────────────────────────────────────────────────────── */
 
 .maptiler-routing {
@@ -225,6 +230,9 @@
   --maptiler-routing-step-divider: #e1eaff;
   /* the gap a row leaves behind while it is being dragged */
   --maptiler-routing-placeholder-color: #eceef2;
+  /* what a map-control button picks up under the pointer: the same 5% black
+     MapLibre paints over its own buttons */
+  --maptiler-routing-control-hover: rgb(0 0 0 / 5%);
   --maptiler-routing-icon-size: 18px;
   --maptiler-routing-radius: 10px;
   --maptiler-routing-radius-small: 4px;
@@ -248,6 +256,63 @@
   font-family: var(--maptiler-routing-font-family);
   font-size: var(--maptiler-routing-font-size);
   line-height: 1.45;
+}
+
+/* The dark palette. Only the colors change: sizes, radii and typography are
+   the same in both, so they stay in the block above.
+
+   It is declared twice on purpose. `data-theme="dark"` is what the control
+   writes for `theme: "dark"`, and has to win in a light-set browser; the media
+   query is the default, `theme: "auto"`, where the reader's own setting
+   decides — and it steps aside for an explicit `theme: "light"`. Keep the two
+   lists identical. */
+.maptiler-routing[data-theme="dark"] {
+  --maptiler-routing-surface: #12161f;
+  --maptiler-routing-surface-alt: #1b2230;
+  --maptiler-routing-surface-hover: #232c3d;
+  --maptiler-routing-text-color: #e6eaf2;
+  --maptiler-routing-muted-color: #95a0b5;
+  --maptiler-routing-accent: #6f9bff;
+  --maptiler-routing-accent-contrast: #0b0e14;
+  --maptiler-routing-border-color: #2b3446;
+  --maptiler-routing-field-hover: #1b2230;
+  --maptiler-routing-pin-color: #41527a;
+  --maptiler-routing-mode-icon-color: #95a0b5;
+  --maptiler-routing-danger-color: #ff9d95;
+  --maptiler-routing-danger-surface: #2c1a1a;
+  --maptiler-routing-skeleton-color: #1b2230;
+  --maptiler-routing-skeleton-highlight: #232c3d;
+  --maptiler-routing-list-shadow: 0 10px 35px rgb(0 0 0 / 45%);
+  --maptiler-routing-step-divider: #2b3446;
+  --maptiler-routing-placeholder-color: #232c3d;
+  --maptiler-routing-shadow: 0 0 6px 2px rgb(0 0 0 / 35%);
+  /* a dark button is picked out by light, not by more shade */
+  --maptiler-routing-control-hover: rgb(255 255 255 / 10%);
+}
+
+@media (prefers-color-scheme: dark) {
+  .maptiler-routing:not([data-theme="light"]) {
+    --maptiler-routing-surface: #12161f;
+    --maptiler-routing-surface-alt: #1b2230;
+    --maptiler-routing-surface-hover: #232c3d;
+    --maptiler-routing-text-color: #e6eaf2;
+    --maptiler-routing-muted-color: #95a0b5;
+    --maptiler-routing-accent: #6f9bff;
+    --maptiler-routing-accent-contrast: #0b0e14;
+    --maptiler-routing-border-color: #2b3446;
+    --maptiler-routing-field-hover: #1b2230;
+    --maptiler-routing-pin-color: #41527a;
+    --maptiler-routing-mode-icon-color: #95a0b5;
+    --maptiler-routing-danger-color: #ff9d95;
+    --maptiler-routing-danger-surface: #2c1a1a;
+    --maptiler-routing-skeleton-color: #1b2230;
+    --maptiler-routing-skeleton-highlight: #232c3d;
+    --maptiler-routing-list-shadow: 0 10px 35px rgb(0 0 0 / 45%);
+    --maptiler-routing-step-divider: #2b3446;
+    --maptiler-routing-placeholder-color: #232c3d;
+    --maptiler-routing-shadow: 0 0 6px 2px rgb(0 0 0 / 35%);
+    --maptiler-routing-control-hover: rgb(255 255 255 / 10%);
+  }
 }
 
 /* With a launcher, the panel leaves the control's flow box: the control then
@@ -295,8 +360,22 @@
   color: var(--maptiler-routing-text-color);
 }
 
-.maptiler-routing button.maptiler-routing-launcher:hover {
-  background: var(--maptiler-routing-surface-alt);
+/* Hover repeats what zoom and compass do: MapLibre darkens the button by
+   `rgb(0 0 0 / 5%)` and this SDK's own rules give the icon a blue hue. The
+   flat tint is layered over the surface as a gradient rather than replacing
+   it, so the same rule serves both palettes — the tint itself flips to a
+   light one in the dark palette; the icon is a mask painted with
+   `currentColor`, so a colour does what their filter does.
+
+   `background` is restated because of the blanket
+   `button:hover { background-color: transparent }` further down — it matches
+   this button too, at equal specificity and later in the file, which is what
+   left the launcher with no ground under the pointer. `:not(:disabled)` is
+   here for weight rather than state: it puts this rule above that one whatever
+   the source order. */
+.maptiler-routing button.maptiler-routing-launcher:not(:disabled):hover {
+  background: linear-gradient(var(--maptiler-routing-control-hover), var(--maptiler-routing-control-hover)), var(--maptiler-routing-surface);
+  color: var(--maptiler-routing-accent);
 }
 
 .maptiler-routing-launcher .maptiler-routing-icon {
@@ -329,6 +408,46 @@
   padding: var(--maptiler-routing-padding);
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+
+/* In the turn-by-turn view, the step list is the only thing that scrolls: the
+   transport tabs, the fields, the filters and the "Route overview" bar stay
+   where they are, which is what makes a long list of turns readable.
+
+   The body stops scrolling and becomes a flex column instead, and each link
+   down to the list joins in — `min-height: 0` on every one of them, or a long
+   list pushes the panel taller rather than scrolling inside it. Everything
+   above the list is pinned at its own height with `flex: none`, so it is the
+   list that gives up the room. */
+.maptiler-routing-body:has(.maptiler-routing-view[data-view="detail"]:not([hidden])) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.maptiler-routing-body:has(.maptiler-routing-view[data-view="detail"]:not([hidden])) .maptiler-routing-view,
+.maptiler-routing-body:has(.maptiler-routing-view[data-view="detail"]:not([hidden])) .maptiler-routing-results {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.maptiler-routing-body:has(.maptiler-routing-view[data-view="detail"]:not([hidden])) .maptiler-routing-view > * {
+  flex: none;
+}
+
+.maptiler-routing-body:has(.maptiler-routing-view[data-view="detail"]:not([hidden])) .maptiler-routing-results,
+.maptiler-routing-body:has(.maptiler-routing-view[data-view="detail"]:not([hidden])) .maptiler-routing-view[data-view="detail"] {
+  flex: 1;
+  min-height: 0;
+}
+
+.maptiler-routing-body:has(.maptiler-routing-view[data-view="detail"]:not([hidden])) .maptiler-routing-steps {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   overscroll-behavior: contain;
 }
 
@@ -425,6 +544,12 @@
 .maptiler-routing :focus-visible {
   outline: 2px solid var(--maptiler-routing-accent);
   outline-offset: 1px;
+}
+
+/* Focus the panel moved by itself, rather than the visitor: no ring until they
+   touch the keyboard (see focusQuietly). */
+.maptiler-routing [data-quiet-focus]:focus-visible {
+  outline: none;
 }
 
 .maptiler-routing .maptiler-routing-waypoint-handle:focus:not(:focus-visible) {
@@ -545,18 +670,33 @@
   bottom: -6px;
 }
 
-/* The picture dragged under the cursor: the row on an opaque background,
-   parked off-screen while the browser takes its snapshot. */
+/* The copy carried under the pointer: the row on an opaque background, placed
+   in viewport coordinates by the view (see placeGhost) and out of the way of
+   hit-testing, so the row it is passing over is what answers for the drop. */
 .maptiler-routing-waypoint-ghost {
   position: fixed;
-  top: -1000px;
-  left: -1000px;
+  top: 0;
+  left: 0;
+  z-index: 2;
   margin: 0;
   padding: 4px;
   border-radius: var(--maptiler-routing-radius);
   background: var(--maptiler-routing-surface);
   box-shadow: var(--maptiler-routing-shadow);
   pointer-events: none;
+}
+
+/* A drag is one gesture with one cursor: the closed hand stays closed over
+   every part of the list it crosses — the fields would otherwise flip it to a
+   text caret — and nothing gets selected on the way.
+
+   Two classes, so this outranks the single-class rules the rows and fields set
+   for themselves. Everywhere outside the list is covered by the view setting
+   the page's own cursor for the length of the drag. */
+.maptiler-routing .maptiler-routing-waypoints[data-dragging],
+.maptiler-routing .maptiler-routing-waypoints[data-dragging] * {
+  cursor: grabbing;
+  user-select: none;
 }
 
 /* Search field states: white with a #c1cfe4 border by default, a #f2f6ff tint
@@ -979,6 +1119,47 @@
   white-space: nowrap;
 }
 
+/* RoutingPanel/not-found: where the cards would have been, a drawing of a route
+   that goes nowhere, the heading, and the line that says what to try instead.
+   The design centres all three in a 259px column, 8px apart. */
+.maptiler-routing-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0 8px;
+  text-align: center;
+}
+
+.maptiler-routing-empty-art {
+  width: 64px;
+  height: 64px;
+  flex: none;
+  /* a drawing rather than an icon: it carries its own colours and a gradient,
+     so it is a background image and not one of the panel's masks */
+  background-image: url([src/style/svg/routing-no-routes.svg]);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.maptiler-routing-empty-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 27px;
+  color: var(--maptiler-routing-text-color);
+}
+
+.maptiler-routing-empty-hint {
+  margin: 0;
+  /* the design's own measure for this line, which is what breaks it in two */
+  max-width: 259px;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--maptiler-routing-muted-color);
+}
+
 /* The error sits above the results, in a card of its own so it reads as a
    state of the panel rather than as a line of red text under the filters. */
 .maptiler-routing-error {
@@ -1044,10 +1225,14 @@
   padding: 0;
 }
 
-/* RouteOptions: a 24px-padded card, tinted when it is one of the alternates
-   and white with a 2px accent border once selected. The border is there in
-   both states, transparent when unselected, so selecting one does not shift
-   the text by a pixel. */
+/* RouteOptions: 24px of padding around a 77px column — 125px tall in all,
+   which is the height the design gives the card. Tinted while it is one of the
+   alternates, white with a 2px accent ring once selected.
+
+   The ring is drawn as an inset shadow rather than a border, which is what
+   keeps the two states the same height: the design's stroke is an inside one,
+   painted over the padding instead of adding to it, and a shadow is the only
+   ring CSS draws without taking up room. */
 .maptiler-routing-route-card {
   position: relative;
   display: flex;
@@ -1056,12 +1241,11 @@
   gap: 8px;
   margin-bottom: var(--maptiler-routing-gap);
   padding: 24px;
-  border: 2px solid transparent;
   border-radius: var(--maptiler-routing-radius);
   background: var(--maptiler-routing-surface-alt);
   transition:
     background var(--maptiler-routing-transition-duration) ease,
-    border-color var(--maptiler-routing-transition-duration) ease;
+    box-shadow var(--maptiler-routing-transition-duration) ease;
 }
 
 .maptiler-routing-route-card:hover {
@@ -1070,18 +1254,34 @@
 
 .maptiler-routing-route-card[data-selected],
 .maptiler-routing-route-card[data-selected]:hover {
-  border-color: var(--maptiler-routing-accent);
   background: var(--maptiler-routing-surface);
+  box-shadow: inset 0 0 0 2px var(--maptiler-routing-accent);
 }
 
+/* The column inside the card: a 27px duration, then the 19px arrival/distance
+   line and the 19px description 4px apart — 8px of that is the gap under the
+   duration, which is why the row carries the difference rather than the gap
+   being the same throughout. */
 .maptiler-routing-route-body {
   display: flex;
   flex: 1;
   min-width: 0;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
+  gap: 4px;
   text-align: left;
+}
+
+/* The body button covers the whole card, so its own focus ring draws a second
+   box just inside the card's own outline — two nested rectangles, which is what
+   a click on an already-selected card was showing. The card wears the ring
+   instead, in the same place its selected state puts one. */
+.maptiler-routing .maptiler-routing-route-body:focus-visible {
+  outline: none;
+}
+
+.maptiler-routing-route-card:has(.maptiler-routing-route-body:focus-visible) {
+  box-shadow: inset 0 0 0 2px var(--maptiler-routing-accent);
 }
 
 /* The whole card selects the route, not just the text inside it: the button
@@ -1100,6 +1300,8 @@
 }
 
 .maptiler-routing-route-duration {
+  /* 4px of the 8px below it; the body's own gap is the other 4 */
+  margin-bottom: 4px;
   font-size: 20px;
   font-weight: 600;
   line-height: 27px;
@@ -1111,6 +1313,8 @@
   gap: 16px;
   color: var(--maptiler-routing-muted-color);
   font-size: 14px;
+  /* the panel's 1.45 would make this line 20px, and the card 2px taller */
+  line-height: 19px;
 }
 
 .maptiler-routing-route-meta-item {
@@ -1127,6 +1331,7 @@
 .maptiler-routing-route-description {
   color: var(--maptiler-routing-muted-color);
   font-size: 14px;
+  line-height: 19px;
 }
 
 /* DirectionButton: a 32px square that opens the turn-by-turn view. It takes
