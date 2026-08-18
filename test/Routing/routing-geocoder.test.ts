@@ -123,6 +123,21 @@ describe("RoutingGeocoder with a search provider", () => {
     expect(results).toEqual([[{ name: "bern", label: "bern", lngLat: [0, 0] }]]);
   });
 
+  it("keeps one field's pending search when another field starts one", async () => {
+    const provider: RoutingSearchProvider = (query) => [{ label: query, lngLat: [0, 0] }];
+    const geocoder = new RoutingGeocoder(options({ provider, debounceMs: 5 }), undefined, describeFeature);
+
+    const answered: string[] = [];
+    // one geocoder serves every waypoint field: the second search must not
+    // silently drop the first field's, which is keyed apart from it
+    geocoder.search("ber", undefined, (places) => answered.push(`from:${places[0]?.label ?? ""}`), "from");
+    geocoder.search("zur", undefined, (places) => answered.push(`to:${places[0]?.label ?? ""}`), "to");
+    await settle();
+    await settle();
+
+    expect(answered.toSorted()).toEqual(["from:ber", "to:zur"]);
+  });
+
   it("aborts the signal it handed out when the query is superseded", async () => {
     const signals: AbortSignal[] = [];
     const provider: RoutingSearchProvider = (_query, context) => {

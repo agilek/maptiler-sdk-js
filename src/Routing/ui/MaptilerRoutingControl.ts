@@ -84,10 +84,15 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
    *
    * A waypoint supplied as a bare coordinate — from the options, from a map
    * click or from a drag — has no label, and showing the coordinate forever
-   * would be a poor first impression. Each one is named once; the set stops a
-   * failed lookup from being retried on every render.
+   * would be a poor first impression. Each position is named once; the record
+   * stops a failed lookup from being retried on every render.
+   *
+   * Keyed by waypoint id, holding the position that was looked up — not a bare
+   * set of ids, because an id outlives the position it was given: dragging the
+   * marker or picking a new point reuses it, and a set would count the waypoint
+   * as already named and leave the previous place's coordinates in the field.
    */
-  private readonly namedWaypoints = new Set<string>();
+  private readonly namedWaypoints = new Map<string, string>();
 
   /** Everything to undo in `onRemove`, collected as one closure. */
   private dispose: (() => void)[] = [];
@@ -512,11 +517,16 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
    * not wait for the name, and a failed lookup leaves the coordinate showing.
    */
   private nameWaypoint(id: string, lngLat: [number, number]): void {
-    if (!this.options.search.enabled || this.namedWaypoints.has(id)) return;
-    this.namedWaypoints.add(id);
+    const position = lngLat.join(",");
+    if (!this.options.search.enabled || this.namedWaypoints.get(id) === position) return;
+    this.namedWaypoints.set(id, position);
 
     void this.geocoder?.reverse(lngLat).then((label) => {
-      if (label) this.routing?.updateWaypoint(id, { label });
+      if (!label) return;
+      // the marker can be dragged on while the lookup is out, and a name for
+      // where it used to be is worse than the coordinates it shows now
+      if (this.namedWaypoints.get(id) !== position) return;
+      this.routing?.updateWaypoint(id, { label });
     });
   }
 

@@ -424,11 +424,18 @@ export class WaypointsView {
       this.syncClearButton(row);
       if (!search.enabled) return;
       const { lng, lat } = this.context.map.getCenter();
-      this.context.geocoder.search(row.input.value, [lng, lat], (places) => {
-        row.suggestions = places;
-        row.activeSuggestion = -1;
-        this.renderSuggestions(row, id);
-      });
+      // keyed by waypoint id: one geocoder serves every field, and without it
+      // typing here would cancel the search another field has queued
+      this.context.geocoder.search(
+        row.input.value,
+        [lng, lat],
+        (places) => {
+          row.suggestions = places;
+          row.activeSuggestion = -1;
+          this.renderSuggestions(row, id);
+        },
+        id,
+      );
     });
 
     row.input.addEventListener("keydown", (event) => {
@@ -622,6 +629,13 @@ export class WaypointsView {
   private renderActionRows(row: WaypointRow, id: string): void {
     const { labels } = this.context.options;
     const fragment = document.createDocumentFragment();
+
+    // these replace the search results in the same open list, so the places
+    // behind them are no longer on offer. Left in place, the keyboard handler
+    // would still read them — pressing Enter over "My location" would pick the
+    // first result of a search the field no longer even holds the text of.
+    row.suggestions = [];
+    row.activeSuggestion = -1;
 
     const actions: { icon: string; label: string; run: () => void }[] = [
       {
