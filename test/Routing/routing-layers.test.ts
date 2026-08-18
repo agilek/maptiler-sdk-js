@@ -78,6 +78,12 @@ describe("buildRouteFeatureCollection", () => {
     expect(buildRouteFeatureCollection([degenerate], 0).features).toHaveLength(0);
   });
 
+  it("gives each feature its route index as an id, which feature state is addressed by", () => {
+    const collection = buildRouteFeatureCollection([makeRoute([line]), makeRoute([line])], 0);
+
+    expect(collection.features.map((feature) => feature.id)).toEqual([0, 1]);
+  });
+
   it("marks nothing as selected when the index is out of range", () => {
     const collection = buildRouteFeatureCollection([makeRoute([line])], -1);
 
@@ -90,12 +96,21 @@ describe("buildRouteFeatureCollection", () => {
 //#region Layer specifications
 
 describe("buildLineLayer", () => {
-  it("switches color, width and opacity on the selected flag", () => {
+  it("gives the alternate under the pointer its own paint, between the two", () => {
     const paint = buildLineLayer(render).paint;
+    const hovered = ["boolean", ["feature-state", "hover"], false];
 
-    expect(paint?.["line-color"]).toEqual(["case", ["get", "selected"], render.selected.color, render.alternate.color]);
-    expect(paint?.["line-width"]).toEqual(["case", ["get", "selected"], render.selected.width, render.alternate.width]);
-    expect(paint?.["line-opacity"]).toEqual(["case", ["get", "selected"], render.selected.opacity, render.alternate.opacity]);
+    expect(paint?.["line-color"]).toEqual(["case", ["get", "selected"], render.selected.color, hovered, render.hover.color, render.alternate.color]);
+    expect(paint?.["line-width"]).toEqual(["case", ["get", "selected"], render.selected.width, hovered, render.hover.width, render.alternate.width]);
+    expect(paint?.["line-opacity"]).toEqual(["case", ["get", "selected"], render.selected.opacity, hovered, render.hover.opacity, render.alternate.opacity]);
+  });
+
+  it("drops the hover branch when hovering is off, rather than painting it the alternate colour", () => {
+    const withoutHover = resolveRoutingOptions({ render: { hover: { enabled: false } } }).render;
+    const paint = buildLineLayer(withoutHover).paint;
+
+    expect(paint?.["line-color"]).toEqual(["case", ["get", "selected"], withoutHover.selected.color, withoutHover.alternate.color]);
+    expect(paint?.["line-width"]).toEqual(["case", ["get", "selected"], withoutHover.selected.width, withoutHover.alternate.width]);
   });
 
   it("sorts features by the sort key", () => {
@@ -109,6 +124,32 @@ describe("buildCasingLayer", () => {
 
     expect(paint?.["line-color"]).toBe(render.casing.color);
     expect(render.casing.width).toBeGreaterThan(render.selected.width);
+  });
+
+  it("cases every route the same while the alternates are drawn at the selected width", () => {
+    expect(buildCasingLayer(render).paint?.["line-width"]).toEqual([
+      "case",
+      ["get", "selected"],
+      render.casing.width,
+      ["boolean", ["feature-state", "hover"], false],
+      render.casing.width,
+      render.casing.width,
+    ]);
+  });
+
+  it("narrows the alternate casing by whatever the alternate line gives up", () => {
+    const thinner = resolveRoutingOptions({ render: { alternate: { width: 2 } } }).render;
+
+    // 4px thinner a line, 4px thinner its casing: the margin either side of it
+    // is the same as under the selected route
+    expect(buildCasingLayer(thinner).paint?.["line-width"]).toEqual([
+      "case",
+      ["get", "selected"],
+      thinner.casing.width,
+      ["boolean", ["feature-state", "hover"], false],
+      thinner.casing.width,
+      thinner.casing.width - 4,
+    ]);
   });
 });
 

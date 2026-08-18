@@ -6,6 +6,7 @@ import type {
   PedestrianProfileOptions,
   RouteCasingStyle,
   RouteFitBoundsOptions,
+  RouteHoverStyle,
   RouteLabelOptions,
   RouteLineStyle,
   RouteWaypointRenderOptions,
@@ -71,9 +72,24 @@ export const DEFAULT_SELECTED_LINE_STYLE: RouteLineStyle = {
 
 /** Paint of the non-selected alternates. */
 export const DEFAULT_ALTERNATE_LINE_STYLE: RouteLineStyle = {
-  color: "#aeb6c7",
-  width: 4,
+  // Pin, Active=False: the same tint of the accent the inactive waypoint pins
+  // use, at the selected route's weight — an alternate is a route the user can
+  // choose, not a lesser line, so colour alone tells the two apart
+  color: "#98b7ff",
+  width: 6,
   opacity: 0.9,
+};
+
+/**
+ * Paint of the alternate under the pointer: the accent, at the selected route's
+ * weight but not its colour, so a hovered line reads as "click me" rather than
+ * as already chosen.
+ */
+export const DEFAULT_HOVER_LINE_STYLE: RouteHoverStyle = {
+  enabled: true,
+  color: "#7da3ff",
+  width: 6,
+  opacity: 1,
 };
 
 /** Paint of the casing drawn beneath both. */
@@ -157,6 +173,7 @@ export type ResolvedRenderOptions = {
   enabled: boolean;
   selected: RouteLineStyle;
   alternate: RouteLineStyle;
+  hover: RouteHoverStyle;
   casing: RouteCasingStyle;
   beforeId?: string | null;
   hitTestWidth: number;
@@ -228,6 +245,7 @@ export function resolveRoutingOptions(options: RoutingOptions = {}): ResolvedRou
       enabled: options.render !== false,
       selected: { ...DEFAULT_SELECTED_LINE_STYLE, ...render.selected },
       alternate: { ...DEFAULT_ALTERNATE_LINE_STYLE, ...render.alternate },
+      hover: { ...DEFAULT_HOVER_LINE_STYLE, ...render.hover },
       casing: { ...DEFAULT_CASING_STYLE, ...render.casing },
       beforeId: render.beforeId,
       hitTestWidth: render.hitTestWidth ?? DEFAULT_HIT_TEST_WIDTH,

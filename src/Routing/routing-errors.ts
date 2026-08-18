@@ -44,6 +44,17 @@ const DETAIL_PATTERNS: readonly { pattern: RegExp; reason: RoutingErrorReason }[
 ];
 
 /**
+ * Failures that mean "there is no such route" rather than "something broke".
+ *
+ * They are the answer to the request, not an accident on the way to it: the
+ * previous results describe a question that was just replaced, so they are
+ * dropped rather than left on screen. Everything else — a rejected key, a spent
+ * quota, an outage, a network blip — leaves the last answer standing, because a
+ * retry may well put it straight back.
+ */
+export const NOT_FOUND_REASONS: ReadonlySet<RoutingErrorReason> = new Set([RoutingErrorReason.NO_ROUTE, RoutingErrorReason.UNREACHABLE, RoutingErrorReason.TOO_FAR]);
+
+/**
  * Reduces a failed directions request to a reason.
  *
  * @param error - Whatever the request rejected with: a {@link FetchError} from

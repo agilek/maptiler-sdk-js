@@ -1,8 +1,8 @@
 import type { Feature, FeatureCollection, LineString } from "geojson";
-import type { LayerSpecification, LineLayerSpecification } from "maplibre-gl";
+import type { ExpressionSpecification, LayerSpecification, LineLayerSpecification } from "maplibre-gl";
 import { ROUTE_CASING_LAYER_ID, ROUTE_HITBOX_LAYER_ID, ROUTE_LINE_LAYER_ID, ROUTE_SOURCE_ID, type ResolvedRenderOptions } from "./routing-constants";
 import { getRouteCoordinates } from "./routing-geometry";
-import type { Route } from "./types";
+import type { Route, RouteLineStyle } from "./types";
 
 /** Properties carried by each route feature, read by the paint expressions and the click handler. */
 export type RouteFeatureProperties = {
@@ -60,6 +60,10 @@ export function buildRouteFeatureCollection(routes: Route[], selectedIndex: numb
 
     features.push({
       type: "Feature",
+      // the route's own index, which is what lets the renderer set a hover
+      // state on one line: `setFeatureState` addresses a feature by id, and a
+      // GeoJSON source has none to give unless the data carries one
+      id: index,
       geometry: { type: "LineString", coordinates },
       properties: {
         index,
@@ -74,6 +78,21 @@ export function buildRouteFeatureCollection(routes: Route[], selectedIndex: numb
   return { type: "FeatureCollection", features };
 }
 
+/** The feature-state test the hover branches share. */
+const HOVERED: ExpressionSpecification = ["boolean", ["feature-state", "hover"], false];
+
+/**
+ * The casing under an alternate.
+ *
+ * Derived rather than fixed: what should stay the same between the two is the
+ * margin of casing showing either side of the line, so the alternate's casing
+ * gives up exactly what its line gives up. With alternates drawn at the
+ * selected route's width — the default — the two casings match.
+ */
+function alternateCasingWidth(render: ResolvedRenderOptions): number {
+  return Math.max(render.casing.width - Math.max(render.selected.width - render.alternate.width, 0), 1);
+}
+
 /** Layout shared by all three line layers. Selected routes sort above the alternates. */
 function lineLayout(): LineLayerSpecification["layout"] {
   return {
@@ -82,6 +101,25 @@ function lineLayout(): LineLayerSpecification["layout"] {
     "line-sort-key": ["get", "sortKey"],
     visibility: "visible",
   };
+}
+
+/**
+ * Picks between three values: the selected route's, the hovered alternate's,
+ * and every other alternate's.
+ *
+ * Selection is a property and hover is a feature state, which is the difference
+ * between the two: the first is in the data the source was given, the second is
+ * set on a feature by id as the pointer moves, without touching the data.
+ *
+ * The hover branch is dropped entirely when hovering is off, so the expression
+ * a consumer reads back from the style says what it actually does.
+ */
+function byRouteState(render: ResolvedRenderOptions, key: keyof RouteLineStyle): ExpressionSpecification {
+  const selected = render.selected[key];
+  const alternate = render.alternate[key];
+  if (!render.hover.enabled) return ["case", ["get", "selected"], selected, alternate] as ExpressionSpecification;
+
+  return ["case", ["get", "selected"], selected, HOVERED, render.hover[key], alternate] as ExpressionSpecification;
 }
 
 /**
@@ -97,7 +135,11 @@ export function buildCasingLayer(render: ResolvedRenderOptions): LineLayerSpecif
     paint: {
       "line-color": render.casing.color,
       "line-opacity": render.casing.opacity,
-      "line-width": ["case", ["get", "selected"], render.casing.width, Math.max(render.casing.width - 3, 1)],
+      // the casing follows the line it sits under: full width for the selected
+      // route and for a hovered alternate, narrower for the rest
+      "line-width": (render.hover.enabled
+        ? ["case", ["get", "selected"], render.casing.width, HOVERED, render.casing.width, alternateCasingWidth(render)]
+        : ["case", ["get", "selected"], render.casing.width, alternateCasingWidth(render)]) as ExpressionSpecification,
     },
   };
 }
@@ -110,9 +152,9 @@ export function buildLineLayer(render: ResolvedRenderOptions): LineLayerSpecific
     source: ROUTE_SOURCE_ID,
     layout: lineLayout(),
     paint: {
-      "line-color": ["case", ["get", "selected"], render.selected.color, render.alternate.color],
-      "line-opacity": ["case", ["get", "selected"], render.selected.opacity, render.alternate.opacity],
-      "line-width": ["case", ["get", "selected"], render.selected.width, render.alternate.width],
+      "line-color": byRouteState(render, "color"),
+      "line-opacity": byRouteState(render, "opacity"),
+      "line-width": byRouteState(render, "width"),
     },
   };
 }

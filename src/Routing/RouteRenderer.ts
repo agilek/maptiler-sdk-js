@@ -17,10 +17,23 @@ import type { Route, RoutingWaypoint } from "./types";
 /** Class of the travel-time badge. Part of the documented styling contract. */
 const ROUTE_LABEL_CLASS = "maptiler-routing-route-label";
 
-/** Reflects selection on a badge, which the stylesheet colours from. */
-function setLabelSelected(element: HTMLElement, selected: boolean): void {
-  if (selected) element.setAttribute("data-selected", "");
-  else element.removeAttribute("data-selected");
+/** Class of the dot marking the step being pointed at. Part of the same contract. */
+const STEP_DOT_CLASS = "maptiler-routing-step-dot";
+
+/** What a waypoint is to the route it belongs to, which picks its marker options. */
+type WaypointRole = "origin" | "destination" | "via";
+
+/** A waypoint's role, from its place in the list. */
+function waypointRole(index: number, count: number): WaypointRole {
+  if (index === 0) return "origin";
+  if (index === count - 1) return "destination";
+  return "via";
+}
+
+/** Reflects a state on a badge, which the stylesheet colours from. */
+function setLabelFlag(element: HTMLElement, name: "data-selected" | "data-hovered", on: boolean): void {
+  if (on) element.setAttribute(name, "");
+  else element.removeAttribute(name);
 }
 
 /** Callbacks the renderer raises for interactions on the map. */
@@ -50,14 +63,29 @@ export class RouteRenderer {
   /** The collection currently shown, kept so a style change can restore it. */
   private data: FeatureCollection<LineString, RouteFeatureProperties> = EMPTY_ROUTE_COLLECTION;
 
-  /** Waypoint markers, keyed by waypoint id. Owned and disposed explicitly. */
-  private readonly markers = new Map<string, Marker>();
+  /**
+   * Waypoint markers, keyed by waypoint id. Owned and disposed explicitly.
+   *
+   * The role is kept with the marker because `MarkerOptions` are read once, at
+   * construction: a marker whose role changed has to be rebuilt, and this is
+   * what says whether it did.
+   */
+  private readonly markers = new Map<string, { marker: Marker; role: WaypointRole }>();
+
+  /** The dot marking the step the user is pointing at, while there is one. */
+  private stepMarker: Marker | null = null;
 
   /** Travel-time badges, keyed by the index of the route they belong to. */
   private readonly labels = new Map<number, { marker: Marker; element: HTMLElement }>();
 
-  /** `true` once the source and layers have been added at least once. */
+  /** `true` once the interaction listeners have been registered. */
   private attached = false;
+
+  /** Ids the current render configuration adds, for {@link reapply}'s guard. */
+  private expectedLayerIds: string[];
+
+  /** Index of the route under the pointer, or `null` when the pointer is off them. */
+  private hoveredIndex: number | null = null;
 
   private destroyed = false;
 
@@ -67,6 +95,7 @@ export class RouteRenderer {
     this.waypointMarkerOptions = waypointMarkers;
     this.routeLabelOptions = routeLabels;
     this.handlers = handlers;
+    this.expectedLayerIds = buildRouteLayers(render).map((layer) => layer.id);
 
     // MapLibre drops every source and layer on a style swap, so both events
     // are hooked: `style.load` covers a completed swap, `styledata` covers the
@@ -116,6 +145,7 @@ export class RouteRenderer {
     if (!this.attached) {
       this.map.on("click", ROUTE_HITBOX_LAYER_ID, this.handleRouteClick);
       this.map.on("mouseenter", ROUTE_HITBOX_LAYER_ID, this.handleRouteEnter);
+      this.map.on("mousemove", ROUTE_HITBOX_LAYER_ID, this.handleRouteMove);
       this.map.on("mouseleave", ROUTE_HITBOX_LAYER_ID, this.handleRouteLeave);
       this.attached = true;
     }
@@ -139,7 +169,10 @@ export class RouteRenderer {
    * Puts the layers back after a style change.
    *
    * Early-outs on the cheapest possible check, because `styledata` fires many
-   * times per style load.
+   * times per style load. The ids checked are the ones this render configuration
+   * actually adds, not every id the module can add: the casing layer is omitted
+   * when it is switched off, and demanding it would make the check unsatisfiable
+   * and every event pay for a full re-attach.
    */
   private reapply = (): void => {
     if (this.destroyed) return;
@@ -147,7 +180,7 @@ export class RouteRenderer {
     // for the style, in which case nothing has ever been attached. Both the
     // source and the layers are checked, since an attach interrupted by a
     // style still parsing can leave one without the other.
-    if (this.map.getSource(ROUTE_SOURCE_ID) && ROUTE_LAYER_IDS.every((id) => this.map.getLayer(id))) return;
+    if (this.map.getSource(ROUTE_SOURCE_ID) && this.expectedLayerIds.every((id) => this.map.getLayer(id))) return;
     this.attach();
   };
 
@@ -169,6 +202,9 @@ export class RouteRenderer {
   setRoutes(routes: Route[], selectedIndex: number): void {
     if (this.destroyed || !this.render.enabled) return;
 
+    // whatever the pointer was over is gone, and a stale index would highlight
+    // a line the user never touched
+    this.clearHoverState();
     this.data = buildRouteFeatureCollection(routes, selectedIndex);
     this.attach();
     this.setSourceData();
@@ -179,20 +215,55 @@ export class RouteRenderer {
   clearRoutes(): void {
     if (this.destroyed) return;
 
+    this.clearHoverState();
+    this.setStepMarker(null);
     this.data = EMPTY_ROUTE_COLLECTION;
     this.setSourceData();
     this.clearRouteLabels();
   }
 
-  /** Replaces the paint options and redraws with them. */
+  /**
+   * Replaces the paint options and redraws with them.
+   *
+   * `attached` is deliberately left alone: it tracks the interaction listeners,
+   * which are bound to a layer id rather than to a layer object and so keep
+   * working across the removal and re-adding below. Clearing it here made
+   * {@link attach} register a second set of the four every call, and one click
+   * on a line select the route once per set.
+   */
   setRenderOptions(render: ResolvedRenderOptions): void {
     this.render = render;
+    this.expectedLayerIds = buildRouteLayers(render).map((layer) => layer.id);
+    this.clearHoverState();
     this.detachLayers();
-    this.attached = false;
     this.attach();
   }
 
   //#endregion
+
+  /**
+   * Puts a dot on the map at the given point, or takes it away.
+   *
+   * One marker, moved rather than rebuilt: pointing down a list of turns is a
+   * fast gesture, and rebuilding the element on every row would flicker.
+   */
+  setStepMarker(lngLat: [number, number] | null): void {
+    if (this.destroyed) return;
+
+    if (!lngLat) {
+      this.stepMarker?.remove();
+      this.stepMarker = null;
+      return;
+    }
+
+    if (!this.stepMarker) {
+      const element = document.createElement("div");
+      element.className = STEP_DOT_CLASS;
+      this.stepMarker = new Marker({ element, anchor: "center" });
+    }
+
+    this.stepMarker.setLngLat(lngLat).addTo(this.map);
+  }
 
   //#region Route labels
 
@@ -224,7 +295,8 @@ export class RouteRenderer {
       const entry = existing ?? this.createRouteLabel(index);
 
       entry.element.textContent = text;
-      setLabelSelected(entry.element, index === selectedIndex);
+      setLabelFlag(entry.element, "data-selected", index === selectedIndex);
+      setLabelFlag(entry.element, "data-hovered", index === this.hoveredIndex);
       entry.marker.setLngLat(midpoint);
 
       if (!existing) {
@@ -246,6 +318,15 @@ export class RouteRenderer {
     element.className = ROUTE_LABEL_CLASS;
     element.dataset.index = index.toString();
 
+    // the badge covers the line it labels, so the pointer reaching it would
+    // otherwise read as leaving the route: both carry the hover between them
+    element.addEventListener("mouseenter", () => {
+      this.setHovered(index);
+    });
+    element.addEventListener("mouseleave", () => {
+      this.setHovered(null);
+    });
+
     if (this.routeLabelOptions.selectOnClick) {
       element.addEventListener("click", (event) => {
         // the badge sits over the line; without this the map click handler
@@ -256,6 +337,13 @@ export class RouteRenderer {
     }
 
     return { marker: new Marker({ element, anchor: "center" }), element };
+  }
+
+  /** Puts the hover state on one badge, or takes it off. Silent when it has none. */
+  private setLabelHovered(index: number | null, hovered: boolean): void {
+    if (index === null) return;
+    const entry = this.labels.get(index);
+    if (entry) setLabelFlag(entry.element, "data-hovered", hovered);
   }
 
   private clearRouteLabels(): void {
@@ -287,45 +375,52 @@ export class RouteRenderer {
       if (!waypoint.lngLat) return;
       seen.add(waypoint.id);
 
+      const role = waypointRole(index, waypoints.length);
       const existing = this.markers.get(waypoint.id);
-      if (existing) {
-        const current = existing.getLngLat();
+
+      // reordering moves a waypoint between roles, and the options that draw
+      // one were read at construction: kept, the marker would carry the start
+      // pin down to a stop in the middle
+      if (existing && existing.role === role) {
+        const current = existing.marker.getLngLat();
         if (current.lng !== waypoint.lngLat[0] || current.lat !== waypoint.lngLat[1]) {
-          existing.setLngLat(waypoint.lngLat);
+          existing.marker.setLngLat(waypoint.lngLat);
         }
         return;
       }
 
-      const marker = new Marker(this.markerOptionsFor(index, waypoints.length)).setLngLat(waypoint.lngLat).addTo(this.map);
+      existing?.marker.remove();
+
+      const marker = new Marker(this.markerOptionsFor(role)).setLngLat(waypoint.lngLat).addTo(this.map);
 
       marker.on("dragend", () => {
         const { lng, lat } = marker.getLngLat();
         this.handlers.onWaypointDragEnd(waypoint.id, [lng, lat]);
       });
 
-      this.markers.set(waypoint.id, marker);
+      this.markers.set(waypoint.id, { marker, role });
     });
 
-    for (const [id, marker] of this.markers) {
+    for (const [id, entry] of this.markers) {
       if (seen.has(id)) continue;
-      marker.remove();
+      entry.marker.remove();
       this.markers.delete(id);
     }
   }
 
   /** Marker options for a waypoint: the base options, then the role-specific ones. */
-  private markerOptionsFor(index: number, count: number): MarkerOptions {
-    const role = index === 0 ? this.waypointMarkerOptions.origin : index === count - 1 ? this.waypointMarkerOptions.destination : {};
+  private markerOptionsFor(role: WaypointRole): MarkerOptions {
+    const roleOptions = role === "origin" ? this.waypointMarkerOptions.origin : role === "destination" ? this.waypointMarkerOptions.destination : {};
 
     return {
       draggable: this.waypointMarkerOptions.draggable,
       ...this.waypointMarkerOptions.marker,
-      ...role,
+      ...roleOptions,
     };
   }
 
   private clearMarkers(): void {
-    for (const marker of this.markers.values()) marker.remove();
+    for (const { marker } of this.markers.values()) marker.remove();
     this.markers.clear();
   }
 
@@ -344,7 +439,70 @@ export class RouteRenderer {
 
   private handleRouteLeave = (): void => {
     this.map.getCanvas().style.cursor = "";
+    this.setHovered(null);
   };
+
+  /**
+   * Follows the pointer along the lines.
+   *
+   * `mousemove` rather than `mouseenter`: where two routes run together the
+   * pointer crosses from one to the other without ever leaving the layer, and
+   * the enter event fires once for the layer rather than once per feature.
+   */
+  private handleRouteMove = (event: MapMouseEvent & { features?: { id?: number | string }[] }): void => {
+    const id = event.features?.[0]?.id;
+    this.setHovered(typeof id === "number" ? id : null);
+  };
+
+  /**
+   * Moves the `hover` feature state from the line that had it to the given one.
+   *
+   * The state lives on the source rather than in the data, so it survives a
+   * selection change and costs no re-parse of the geometry. It survives new
+   * data too, which is what {@link clearHoverState} is for.
+   */
+  private setHovered(index: number | null): void {
+    if (this.hoveredIndex === index) return;
+    // mid style swap the source is briefly gone, and MapLibre throws on a
+    // feature state set against a source it cannot find. The state went with
+    // the source, but the badge is ours and still needs resetting.
+    if (!this.map.getSource(ROUTE_SOURCE_ID)) {
+      this.clearHoverState();
+      return;
+    }
+
+    // a route drawn under the pointer is not one the pointer moved onto, and
+    // the drawn state is the selected one either way
+    if (this.hoveredIndex !== null) this.map.removeFeatureState({ source: ROUTE_SOURCE_ID, id: this.hoveredIndex }, "hover");
+    if (index !== null) this.map.setFeatureState({ source: ROUTE_SOURCE_ID, id: index }, { hover: true });
+
+    this.setLabelHovered(this.hoveredIndex, false);
+    this.setLabelHovered(index, true);
+    this.hoveredIndex = index;
+  }
+
+  /**
+   * Forgets which line was hovered, taking the paint with it.
+   *
+   * MapLibre keeps feature state in the source cache across a `setData`, and
+   * the ids are route indices the next result set reuses: dropped without being
+   * removed, the state would paint whichever route lands on that index as
+   * hovered, with the pointer nowhere near it and the badge — recomputed from
+   * `hoveredIndex` — disagreeing. It would not clear either, since
+   * {@link setHovered} early-outs when the index it is given already matches.
+   */
+  private clearHoverState(): void {
+    if (this.hoveredIndex === null) return;
+
+    // the state is already gone with a source that is gone, and MapLibre throws
+    // on a feature state call against one it cannot find
+    if (this.map.getSource(ROUTE_SOURCE_ID)) {
+      this.map.removeFeatureState({ source: ROUTE_SOURCE_ID, id: this.hoveredIndex }, "hover");
+    }
+
+    this.setLabelHovered(this.hoveredIndex, false);
+    this.hoveredIndex = null;
+  }
 
   //#endregion
 
@@ -368,11 +526,14 @@ export class RouteRenderer {
     if (this.attached) {
       this.map.off("click", ROUTE_HITBOX_LAYER_ID, this.handleRouteClick);
       this.map.off("mouseenter", ROUTE_HITBOX_LAYER_ID, this.handleRouteEnter);
+      this.map.off("mousemove", ROUTE_HITBOX_LAYER_ID, this.handleRouteMove);
       this.map.off("mouseleave", ROUTE_HITBOX_LAYER_ID, this.handleRouteLeave);
     }
 
     this.clearMarkers();
     this.clearRouteLabels();
+    this.stepMarker?.remove();
+    this.stepMarker = null;
 
     // the style may already be gone when the map itself is being removed
     try {

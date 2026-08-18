@@ -215,8 +215,17 @@ export type RoutingResponseOptions = {
   language?: string;
   /** Number of alternative routes to return in addition to the best one. */
   alternates?: number;
-  /** How much per-step detail to return. */
-  detailLevel?: RouteDetailLevel;
+  /**
+   * Extra content to include in the response.
+   *
+   * `detailLevel` lives in here rather than beside `units` because that is where
+   * the service reads it: sent one level up it is accepted and ignored, and the
+   * legs come back with no `steps` — no turn-by-turn, and no error to say why.
+   */
+  additionalData?: {
+    /** How much per-step detail to return. */
+    detailLevel?: RouteDetailLevel;
+  };
 };
 
 /** The parts of a directions request that do not depend on the profile. */
@@ -418,12 +427,25 @@ export type RouteCasingStyle = RouteLineStyle & {
   enabled: boolean;
 };
 
+/** Paint of the alternate under the pointer. */
+export type RouteHoverStyle = RouteLineStyle & {
+  /** `false` leaves an alternate looking the same under the pointer as away from it. */
+  enabled: boolean;
+};
+
 /** How routes are drawn on the map. */
 export type RouteRenderOptions = {
   /** Paint of the selected route. */
   selected?: Partial<RouteLineStyle>;
   /** Paint of the non-selected alternates. */
   alternate?: Partial<RouteLineStyle>;
+  /**
+   * Paint of the alternate under the pointer, which is what tells the user the
+   * line is theirs to click. The selected route keeps its own paint: it is
+   * already the highlighted one, and changing it under the pointer would read
+   * as a state it is about to enter rather than the one it is in.
+   */
+  hover?: Partial<RouteHoverStyle>;
   /** Paint of the casing drawn under both. */
   casing?: Partial<RouteCasingStyle>;
   /**

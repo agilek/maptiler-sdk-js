@@ -3,6 +3,7 @@ import type { Subscription } from "maplibre-gl";
 import type { Map as SDKMap } from "../Map";
 import { RouteRenderer } from "./RouteRenderer";
 import { routing } from "./routing-api";
+import { NOT_FOUND_REASONS, classifyRoutingError } from "./routing-errors";
 import { resolveRoutingOptions, type ResolvedRoutingOptions } from "./routing-constants";
 import { getCoordinatesBounds, getRoutesBounds, type RouteBounds } from "./routing-geometry";
 import { buildDirectionsRequest } from "./routing-request";
@@ -366,6 +367,25 @@ export class RoutingController extends maplibregl.Evented {
     return this;
   }
 
+  /**
+   * Marks where a step happens on the map, with a dot at its first coordinate —
+   * the point the instruction is about.
+   *
+   * @param step - The step to mark, or `null` to take the dot away.
+   *
+   * @remarks
+   * Separate from {@link zoomToStep}: pointing at a turn in a list is not the
+   * same gesture as going there, and only the second one should move the map.
+   */
+  highlightStep(step: FlatRouteStep | null): this {
+    if (this.destroyed) return this;
+
+    const route = step ? this.getSelectedRoute() : undefined;
+    const coordinates = route && step ? getStepCoordinates(route, step) : [];
+    this.renderer.setStepMarker(coordinates[0] ?? null);
+    return this;
+  }
+
   /** Frames every drawn route. */
   fitBounds(options?: RouteFitBoundsOptions): this {
     const bounds = getRoutesBounds(this.routes);
@@ -460,6 +480,15 @@ export class RoutingController extends maplibregl.Evented {
       if (this.isDestroyed()) return [];
 
       const failure = error instanceof Error ? error : new Error(String(error));
+
+      // A "no such route" answer retires the previous one: the walk that is too
+      // long is the answer to the question now being asked, and leaving the car
+      // route drawn — and its cards listed under a "no routes found" heading —
+      // offers times and distances for a request nobody made. Cleared here, at
+      // the source, so the map and any panel drop them together. Other failures
+      // keep the last answer: a retry may put it straight back.
+      if (NOT_FOUND_REASONS.has(classifyRoutingError(failure))) this.discardRoutes();
+
       // remembered as well as fired: a listener attached after the fact — a
       // panel added, or re-added, once the request had already failed — has no
       // other way to know the session is in a failed state
@@ -477,22 +506,44 @@ export class RoutingController extends maplibregl.Evented {
   /** Aborts the request in flight, if any. No error event is fired for it. */
   cancel(): this {
     this.cancelPendingRun();
-    this.calculating = false;
     return this;
   }
 
-  /** Removes the drawn routes and the stored results, keeping the waypoints. */
+  /**
+   * Removes the drawn routes and the stored results, keeping the waypoints.
+   *
+   * Anything in flight is abandoned first, and unconditionally — a response
+   * that lands after the session was cleared would repopulate the results,
+   * redraw the lines and re-frame the camera, putting back what `routingclear`
+   * has already told listeners is gone.
+   */
   clear(): this {
     if (this.destroyed) return this;
+
+    this.cancelPendingRun();
     this.lastError = null;
-    if (this.routes.length === 0 && this.selectedIndex === -1) return this;
+    if (!this.discardRoutes()) return this;
+
+    this.fireEvent("routingclear", {});
+    return this;
+  }
+
+  /**
+   * Drops the results and the geometry drawn from them, silently.
+   *
+   * The event is the caller's to fire — {@link clear} announces itself, a failed
+   * request lets its own `routingerror` speak for the state.
+   *
+   * @returns Whether there was anything to drop.
+   */
+  private discardRoutes(): boolean {
+    if (this.routes.length === 0 && this.selectedIndex === -1) return false;
 
     this.routes = [];
     this.selectedIndex = -1;
     this.response = undefined;
     this.renderer.clearRoutes();
-    this.fireEvent("routingclear", {});
-    return this;
+    return true;
   }
 
   /** Detaches everything: layers, markers, listeners and any request in flight. */
@@ -511,9 +562,27 @@ export class RoutingController extends maplibregl.Evented {
 
   //#region Internal
 
-  /** Schedules a recompute, coalescing a burst of changes into one request. */
+  /**
+   * Schedules a recompute, coalescing a burst of changes into one request.
+   *
+   * Every caller has just changed what the request asks, which makes the answer
+   * in flight an answer to the previous question: left to land, it would draw a
+   * route that does not match the markers and — with `fitBounds` on — fly the
+   * camera to it, only for the real answer to do both again a moment later.
+   */
   private invalidate(): this {
-    if (this.destroyed || !this.options.autoCalculate) return this;
+    if (this.destroyed) return this;
+
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+      // a replacement is on its way whenever one is being scheduled, so the
+      // session has not stopped calculating and no panel should flicker out of
+      // its loading state and back in
+      this.calculating = this.options.autoCalculate;
+    }
+
+    if (!this.options.autoCalculate) return this;
 
     if (this.debounceTimer !== null) clearTimeout(this.debounceTimer);
     this.debounceTimer = setTimeout(() => {
@@ -524,7 +593,15 @@ export class RoutingController extends maplibregl.Evented {
     return this;
   }
 
-  /** Drops the pending debounce and aborts the request in flight. */
+  /**
+   * Drops the pending debounce and aborts the request in flight.
+   *
+   * `calculating` is reset here rather than only in {@link calculate}'s
+   * `finally`: nulling `abortController` is what makes that block's
+   * `this.abortController === controller` guard fail, so the aborted run cannot
+   * reset the flag itself and every path that ends a run has to come through
+   * here. A caller that goes on to start a new run sets it back.
+   */
   private cancelPendingRun(): void {
     if (this.debounceTimer !== null) {
       clearTimeout(this.debounceTimer);
@@ -533,6 +610,7 @@ export class RoutingController extends maplibregl.Evented {
 
     this.abortController?.abort();
     this.abortController = null;
+    this.calculating = false;
   }
 
   /**
