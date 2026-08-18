@@ -89,10 +89,11 @@ export const RC = Object.freeze({
   routeDescription: "maptiler-routing-route-description",
   routeDetail: "maptiler-routing-route-detail",
 
+  detailHeader: "maptiler-routing-detail-header",
   detailTop: "maptiler-routing-detail-top",
   detailBack: "maptiler-routing-detail-back",
+  detailDownload: "maptiler-routing-detail-download",
   detailTitle: "maptiler-routing-detail-title",
-  detailSummary: "maptiler-routing-detail-summary",
   steps: "maptiler-routing-steps",
   step: "maptiler-routing-step",
   stepIcon: "maptiler-routing-step-icon",
@@ -228,6 +229,9 @@ export const DEFAULT_LABELS: Required<RoutingControlLabels> = Object.freeze({
   routeOverview: "Route overview",
   showDetail: "Show the turn-by-turn directions",
   noSteps: "This route came back without step details.",
+  download: "Download this route",
+  downloadPdf: "Download guide (PDF)",
+  downloadGpx: "Download route (GPX)",
   eta: "ETA",
   transportMode: "Transport mode",
   modes: { car: "Car", truck: "Truck", bicycle: "Bike", pedestrian: "Walk" },
@@ -305,6 +309,7 @@ export type ResolvedTurnByTurnOptions = {
   enabled: boolean;
   zoomOnStepClick: boolean;
   maxZoom: number;
+  download: boolean;
 };
 
 /** {@link MaptilerRoutingControlOptions} with every value resolved. */
@@ -418,6 +423,7 @@ export function resolveControlOptions(options: MaptilerRoutingControlOptions = {
       enabled: options.turnByTurn !== false,
       zoomOnStepClick: turnByTurn.zoomOnStepClick ?? true,
       maxZoom: turnByTurn.maxZoom ?? 16,
+      download: turnByTurn.download ?? true,
     },
     fitBoundsOnResult: options.fitBoundsOnResult ?? true,
     labels: {

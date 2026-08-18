@@ -1,19 +1,13 @@
-import { RoutingErrorReason, classifyRoutingError } from "../routing-errors";
+import { NOT_FOUND_REASONS, classifyRoutingError } from "../routing-errors";
+import { routeToGpx } from "../routing-export";
+import type { FlatRouteStep } from "../routing-steps";
 import type { Route } from "../types";
+import { Dropdown, menuButton } from "./routing-dropdown";
+import { printRouteGuide } from "./routing-print";
 import type { RoutingPanelContext } from "./routing-ui-context";
 import { RC, maneuverIconId } from "./routing-ui-defaults";
-import { button, el, focusQuietly, icon, setBooleanAttribute, setDataFlag } from "./routing-ui-dom";
+import { button, downloadText, el, focusQuietly, icon, setBooleanAttribute, setDataFlag } from "./routing-ui-dom";
 import type { RoutingPanelStatus } from "./routing-ui-types";
-
-/**
- * Failures that mean "there is no such route" rather than "something broke".
- *
- * They read to the visitor exactly like a response with no routes in it, so they
- * are shown the same way: the not-found drawing, with the reason as its hint.
- * Everything else — a rejected key, a spent quota, an outage — stays a red card,
- * because no change of stops or transport mode will fix it.
- */
-const NOT_FOUND_REASONS: ReadonlySet<string> = new Set([RoutingErrorReason.NO_ROUTE, RoutingErrorReason.UNREACHABLE, RoutingErrorReason.TOO_FAR]);
 
 /**
  * The results half of the panel: the status line, the route cards, and the
@@ -32,7 +26,6 @@ export class ResultsView {
   private readonly skeleton: HTMLElement;
   private readonly routesList: HTMLUListElement;
   private readonly detailElement: HTMLElement;
-  private readonly detailSummary: HTMLParagraphElement;
   private readonly stepsList: HTMLOListElement;
 
   private status: RoutingPanelStatus = "idle";
@@ -40,6 +33,16 @@ export class ResultsView {
 
   /** The card that opened the detail view, so focus can be returned to it. */
   private detailOpener: HTMLElement | null = null;
+
+  /**
+   * The step the user last clicked.
+   *
+   * Held here rather than read off the DOM: the list is rebuilt on every
+   * render, and the row the map is showing should still be the marked one
+   * afterwards. It is also where the dot returns to when the pointer leaves a
+   * row it was only passing over.
+   */
+  private activeStep: FlatRouteStep | null = null;
 
   /**
    * The "no routes found" state: the drawing, the heading and the hint.
@@ -92,10 +95,13 @@ export class ResultsView {
     // itself rather than in a line above it
     this.routesList.setAttribute("aria-label", labels.routes);
 
-    this.detailSummary = el("p", RC.detailSummary);
     this.stepsList = el("ol", RC.steps);
 
-    // RoutingPanel/Detail: a tinted bar holding the way back and the title
+    // RoutingPanel/Detail: the tinted bar holding the way back and the title,
+    // and — when turnByTurn.download is on — the download button beside it.
+    // The button sits outside the tinted bar rather than inside it: the design
+    // keeps it a plain icon on the panel's own background, not tinted with
+    // the "Route overview" pill.
     const detailTop = el("div", RC.detailTop);
     const back = button(RC.detailBack, labels.backToRoutes, "arrow-left");
     back.addEventListener("click", () => {
@@ -103,10 +109,29 @@ export class ResultsView {
     });
     detailTop.append(back, el("h3", RC.detailTitle, labels.routeOverview));
 
+    const detailHeader = el("div", RC.detailHeader);
+    detailHeader.append(detailTop);
+
+    if (context.options.turnByTurn.download) {
+      const downloadToggle = button(RC.detailDownload, labels.download, "download");
+      const download = new Dropdown(downloadToggle, labels.download);
+      download.menu.append(
+        menuButton(labels.downloadPdf, () => {
+          download.close();
+          this.downloadGuide();
+        }),
+        menuButton(labels.downloadGpx, () => {
+          download.close();
+          this.downloadGpx();
+        }),
+      );
+      detailHeader.append(download.element);
+    }
+
     this.detailElement = el("div", RC.view);
     this.detailElement.dataset.view = "detail";
     this.detailElement.hidden = true;
-    this.detailElement.append(detailTop, this.detailSummary, this.stepsList);
+    this.detailElement.append(detailHeader, this.stepsList);
 
     // classed rather than bare: the turn-by-turn layout needs a flex chain from
     // the panel body down to the step list, and this is a link in it
@@ -260,8 +285,11 @@ export class ResultsView {
 
     this.routesList.replaceChildren(fragment);
     // hidden rather than emptied while a request runs: the cards are kept so
-    // that a failed recalculation can put the previous answer straight back
-    this.routesList.hidden = this.isDetailOpen() || this.status === "loading";
+    // that a failed recalculation can put the previous answer straight back.
+    // A dead end takes the whole space, so nothing is listed under it — the
+    // controller drops the results behind a not-found failure, and this keeps
+    // any cards a consumer put there from reading as the answer to it.
+    this.routesList.hidden = this.isDetailOpen() || this.status === "loading" || !this.emptyElement.hidden;
   }
 
   /**
@@ -285,11 +313,8 @@ export class ResultsView {
 
   private renderSteps(): void {
     const { labels, formatters, renderers, turnByTurn } = this.context.options;
-    const route = this.context.routing.getSelectedRoute();
     const steps = this.context.routing.getSteps();
     const units = this.context.routing.getUnits();
-
-    this.detailSummary.textContent = route ? `${formatters.duration(route.summary.totalTime)} · ${formatters.distance(route.summary.totalLength, units)}` : "";
 
     if (steps.length === 0) {
       this.stepsList.replaceChildren(el("li", RC.step, labels.noSteps));
@@ -310,6 +335,41 @@ export class ResultsView {
       stepButton.type = "button";
       stepButton.dataset.leg = entry.legIndex.toString();
       stepButton.dataset.step = entry.stepIndex.toString();
+
+      // the row is about to take focus from the click; taken quietly, it keeps
+      // the ring for the keyboard and leaves a clicked row its background alone
+      stepButton.addEventListener("mousedown", () => {
+        focusQuietly(stepButton);
+      });
+
+      stepButton.dataset.key = entry.key;
+      setDataFlag(stepButton, "active", entry.key === this.activeStep?.key);
+      // marked on every step, whether or not clicking one moves the map: the
+      // row the user picked is worth keeping visible either way
+      stepButton.addEventListener("click", () => {
+        this.setActiveStep(entry);
+        // asserted rather than left to the hover that usually precedes it: a
+        // tap, a keyboard activation and a re-rendered list under a still
+        // pointer all reach here without a `mouseenter` of their own
+        this.context.routing.highlightStep(entry);
+      });
+
+      // Pointing at a turn puts a dot where it happens, so the list and the map
+      // are read together; the keyboard route through the list does the same.
+      // Leaving a row falls back to the clicked one rather than to nothing —
+      // passing over a neighbour must not throw away where the user was.
+      stepButton.addEventListener("mouseenter", () => {
+        this.context.routing.highlightStep(entry);
+      });
+      stepButton.addEventListener("focus", () => {
+        this.context.routing.highlightStep(entry);
+      });
+      stepButton.addEventListener("mouseleave", () => {
+        this.context.routing.highlightStep(this.activeStep);
+      });
+      stepButton.addEventListener("blur", () => {
+        this.context.routing.highlightStep(this.activeStep);
+      });
 
       const instruction = entry.step.maneuver?.instruction ?? entry.step.streetName ?? "Continue";
       const distance = formatters.distance(entry.step.length, units);
@@ -339,6 +399,16 @@ export class ResultsView {
     this.stepsList.replaceChildren(fragment);
   }
 
+  /** Moves the clicked-step mark to one row, without rebuilding the list. */
+  private setActiveStep(entry: FlatRouteStep): void {
+    if (this.activeStep?.key === entry.key) return;
+    this.activeStep = entry;
+
+    for (const step of this.stepsList.querySelectorAll<HTMLElement>(`.${RC.step}`)) {
+      setDataFlag(step, "active", step.dataset.key === entry.key);
+    }
+  }
+
   //#endregion
 
   //#region Views
@@ -346,6 +416,9 @@ export class ResultsView {
   /** Opens the turn-by-turn view for the selected route. */
   showDetail(opener?: HTMLElement): void {
     this.detailOpener = opener ?? null;
+    // a fresh guide, with no row picked out of it yet and no dot on the map
+    this.activeStep = null;
+    this.context.routing.highlightStep(null);
     this.detailElement.hidden = false;
     this.routesList.hidden = true;
     this.statusElement.hidden = true;
@@ -361,6 +434,9 @@ export class ResultsView {
 
   /** Returns to the route list, restoring focus to whatever opened the detail. */
   showRoutes(): void {
+    // the dot marks a turn of the guide being read, and the guide is closing
+    this.activeStep = null;
+    this.context.routing.highlightStep(null);
     this.detailElement.hidden = true;
     this.routesList.hidden = false;
     this.render();
@@ -372,6 +448,29 @@ export class ResultsView {
   /** `true` while the turn-by-turn view is open. */
   isDetailOpen(): boolean {
     return !this.detailElement.hidden;
+  }
+
+  //#endregion
+
+  //#region Download
+
+  /** Prints the turn-by-turn guide for the selected route, saved as PDF through the browser's own dialog. */
+  private downloadGuide(): void {
+    const { labels, formatters, language } = this.context.options;
+    const route = this.context.routing.getSelectedRoute();
+    if (!route) return;
+
+    printRouteGuide(route, this.context.routing.getSteps(), this.context.routing.getUnits(), labels, formatters, language);
+    this.context.control.fire("routinguidownload", { format: "pdf" });
+  }
+
+  /** Saves the selected route as a GPX track. */
+  private downloadGpx(): void {
+    const route = this.context.routing.getSelectedRoute();
+    if (!route) return;
+
+    downloadText("route.gpx", routeToGpx(route), "application/gpx+xml");
+    this.context.control.fire("routinguidownload", { format: "gpx" });
   }
 
   //#endregion

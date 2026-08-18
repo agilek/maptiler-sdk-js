@@ -3,16 +3,17 @@ import { RC } from "./routing-ui-defaults";
 import { el, focusQuietly, icon, setBooleanAttribute, setDataFlag } from "./routing-ui-dom";
 
 /**
- * A filter dropdown: a pill that opens a panel below it.
+ * A menu that opens under a toggle button: the filter row's pills, and the
+ * turn-by-turn view's download button.
  *
- * The design's filter row (RouteFilters) is made of these — one per filter,
- * each showing its current value and opening a small menu. The menu is a
- * `role="group"` rather than a `role="menu"`: several of them hold checkboxes
- * and number inputs, which a menu may not contain.
+ * The menu is a `role="group"` rather than a `role="menu"`: several filter
+ * menus hold checkboxes and number inputs, which a menu may not contain.
  *
- * The instance owns its open state and its outside-click listener, so a view
- * only has to build the content and call {@link setLabel} when the value
- * changes.
+ * The toggle is built by the caller — a text pill via {@link Dropdown.pill},
+ * or any other button for a caller with its own look, such as the download
+ * button's plain icon — so this class owns only what every toggle needs
+ * regardless of its content: positioning the menu, closing on an outside
+ * click or Escape, and following the panel when it scrolls underneath.
  */
 export class Dropdown {
   /** Wrapper to place in the filter row. */
@@ -22,7 +23,7 @@ export class Dropdown {
   readonly menu: HTMLElement;
 
   private readonly toggle: HTMLButtonElement;
-  private readonly text: HTMLSpanElement;
+  private readonly text?: HTMLSpanElement;
   private opened = false;
 
   /**
@@ -61,17 +62,22 @@ export class Dropdown {
     this.position();
   };
 
-  constructor(label: string, ariaLabel: string) {
+  /**
+   * @param toggle - The button that opens the menu. Its look is entirely the
+   * caller's; this constructor only wires the behavior every toggle needs.
+   * @param ariaLabel - Accessible name of both the toggle and the menu.
+   * @param text - The pill's label span, when `toggle` carries one — so
+   * {@link setLabel} has something to update. Omitted for a toggle with a
+   * fixed look, such as an icon button.
+   */
+  constructor(toggle: HTMLButtonElement, ariaLabel: string, text?: HTMLSpanElement) {
     this.element = el("div", RC.dropdown);
+    this.toggle = toggle;
+    this.text = text;
 
-    this.text = el("span", RC.dropdownLabel, label);
-
-    this.toggle = el("button", RC.dropdownToggle);
-    this.toggle.type = "button";
     this.toggle.setAttribute("aria-haspopup", "true");
     this.toggle.setAttribute("aria-expanded", "false");
     this.toggle.setAttribute("aria-label", ariaLabel);
-    this.toggle.append(this.text, icon("chevron-down"));
     this.toggle.addEventListener("click", () => {
       this.setOpen(!this.opened);
     });
@@ -90,9 +96,18 @@ export class Dropdown {
     });
   }
 
-  /** Replaces the text shown on the pill. */
+  /** Builds a filter row's dropdown: a text pill with a chevron. */
+  static pill(label: string, ariaLabel: string): Dropdown {
+    const text = el("span", RC.dropdownLabel, label);
+    const toggle = el("button", RC.dropdownToggle);
+    toggle.type = "button";
+    toggle.append(text, icon("chevron-down"));
+    return new Dropdown(toggle, ariaLabel, text);
+  }
+
+  /** Replaces the text shown on the pill. No-op for a toggle with none. */
   setLabel(label: string): void {
-    this.text.textContent = label;
+    if (this.text) this.text.textContent = label;
   }
 
   /** `true` while the menu is showing. */
@@ -157,6 +172,18 @@ export function menuRow(label: string, control?: HTMLElement): HTMLLabelElement 
 /** The explanatory line the design puts at the foot of a menu. */
 export function menuNote(text: string): HTMLParagraphElement {
   return el("p", RC.dropdownNote, text);
+}
+
+/**
+ * A row that acts rather than choosing a value — the download menu's two
+ * options, where {@link menuRow}'s label-plus-control shape does not fit.
+ */
+export function menuButton(label: string, onClick: () => void): HTMLButtonElement {
+  const row = el("button", RC.dropdownRow);
+  row.type = "button";
+  row.textContent = label;
+  row.addEventListener("click", onClick);
+  return row;
 }
 
 /**

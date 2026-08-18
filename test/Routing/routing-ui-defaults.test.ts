@@ -156,6 +156,20 @@ describe("resolveControlOptions", () => {
     expect(configured.search.debounceMs).toBe(300);
     expect(configured.turnByTurn.maxZoom).toBe(12);
     expect(configured.turnByTurn.zoomOnStepClick).toBe(true);
+    expect(configured.turnByTurn.download).toBe(true);
+  });
+
+  it("turns the download menu off on its own, independent of the rest of turnByTurn", () => {
+    expect(resolveControlOptions({ turnByTurn: { download: false } }).turnByTurn.download).toBe(false);
+    // the rest of turnByTurn keeps its defaults
+    expect(resolveControlOptions({ turnByTurn: { download: false } }).turnByTurn.zoomOnStepClick).toBe(true);
+  });
+
+  it("gives the download menu its own labels", () => {
+    const options = resolveControlOptions();
+    expect(options.labels.download).toBe("Download this route");
+    expect(options.labels.downloadPdf).toBe("Download guide (PDF)");
+    expect(options.labels.downloadGpx).toBe("Download route (GPX)");
   });
 });
 

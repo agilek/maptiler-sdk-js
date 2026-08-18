@@ -219,8 +219,8 @@
   --maptiler-routing-pin-color: #98b7ff;
   /* TransportModes: the icons keep one grey in every tab state */
   --maptiler-routing-mode-icon-color: #444952;
-  --maptiler-routing-danger-color: #d92d20;
-  --maptiler-routing-danger-surface: #fef3f2;
+  --maptiler-routing-danger-color: #c9372c;
+  --maptiler-routing-danger-surface: #ffeceb;
   /* RouteLoading: the two ends of the skeleton's shimmer */
   --maptiler-routing-skeleton-color: #e4ecff;
   --maptiler-routing-skeleton-highlight: #f1f5ff;
@@ -233,6 +233,11 @@
   /* what a map-control button picks up under the pointer: the same 5% black
      MapLibre paints over its own buttons */
   --maptiler-routing-control-hover: rgb(0 0 0 / 5%);
+  /* The scrollbars the panel's own scrolling areas get: the step list, the body
+     and the suggestion list. Painted from the palette rather than left to the
+     browser, which would otherwise draw a light bar down a dark panel. */
+  --maptiler-routing-scrollbar-thumb: #c1cfe4;
+  --maptiler-routing-scrollbar-track: transparent;
   --maptiler-routing-icon-size: 18px;
   --maptiler-routing-radius: 10px;
   --maptiler-routing-radius-small: 4px;
@@ -252,6 +257,11 @@
   align-items: flex-start;
   gap: var(--maptiler-routing-gap);
   position: relative;
+  /* declared with the palette it goes with: it is what tells the browser which
+     way to paint the parts the panel does not draw itself — scrollbar buttons
+     and corners among them — and Safari reads it where it reads no
+     `scrollbar-color` */
+  color-scheme: light;
   color: var(--maptiler-routing-text-color);
   font-family: var(--maptiler-routing-font-family);
   font-size: var(--maptiler-routing-font-size);
@@ -288,6 +298,9 @@
   --maptiler-routing-shadow: 0 0 6px 2px rgb(0 0 0 / 35%);
   /* a dark button is picked out by light, not by more shade */
   --maptiler-routing-control-hover: rgb(255 255 255 / 10%);
+  --maptiler-routing-scrollbar-thumb: #3d4a63;
+  --maptiler-routing-scrollbar-track: transparent;
+  color-scheme: dark;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -312,6 +325,9 @@
     --maptiler-routing-placeholder-color: #232c3d;
     --maptiler-routing-shadow: 0 0 6px 2px rgb(0 0 0 / 35%);
     --maptiler-routing-control-hover: rgb(255 255 255 / 10%);
+    --maptiler-routing-scrollbar-thumb: #3d4a63;
+    --maptiler-routing-scrollbar-track: transparent;
+    color-scheme: dark;
   }
 }
 
@@ -418,6 +434,8 @@
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--maptiler-routing-scrollbar-thumb) var(--maptiler-routing-scrollbar-track);
 }
 
 /* In the turn-by-turn view, the step list is the only thing that scrolls: the
@@ -458,6 +476,8 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--maptiler-routing-scrollbar-thumb) var(--maptiler-routing-scrollbar-track);
 }
 
 /* Buttons */
@@ -495,7 +515,8 @@
 
 .maptiler-routing-waypoint-remove,
 .maptiler-routing-waypoint-handle,
-.maptiler-routing-detail-back {
+.maptiler-routing-detail-back,
+.maptiler-routing-detail-download {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -522,7 +543,8 @@
 }
 
 .maptiler-routing-waypoint-remove,
-.maptiler-routing-detail-back {
+.maptiler-routing-detail-back,
+.maptiler-routing-detail-download {
   width: 32px;
   height: 32px;
 }
@@ -532,6 +554,13 @@
      button and the glyph lands where the design puts it */
   width: 32px;
   height: 32px;
+}
+
+.maptiler-routing-detail-download .maptiler-routing-icon {
+  /* unlike the arrow, the download glyph does not fill its button: a 24px
+     icon, centred by the button's own flex centring, inside the 32px square */
+  width: 24px;
+  height: 24px;
 }
 
 /* _DeleteButton: 32px square, a 24px glyph, and on hover the #f2f6ff tint
@@ -545,9 +574,26 @@
   height: 24px;
 }
 
-.maptiler-routing button.maptiler-routing-detail-back:hover {
+.maptiler-routing button.maptiler-routing-detail-back:hover,
+.maptiler-routing button.maptiler-routing-detail-download:hover {
   background: var(--maptiler-routing-surface-alt);
   color: var(--maptiler-routing-text-color);
+}
+
+/* Held open the same way it would be hovered, so the button does not go
+   plain the moment the pointer leaves it for the menu below. */
+.maptiler-routing-detail-download[aria-expanded="true"] {
+  background: var(--maptiler-routing-surface-alt);
+  color: var(--maptiler-routing-text-color);
+}
+
+/* An action row rather than a value row: menuButton's element is a <button>,
+   which the MapLibre-hover reset above would otherwise leave with no hover
+   tint — labels, everywhere else this class is used, are untouched by it,
+   since the reset only matches the element `button`. Matches that reset's own
+   specificity and wins by coming later. */
+.maptiler-routing button.maptiler-routing-dropdown-row:hover {
+  background: var(--maptiler-routing-surface-alt);
 }
 
 .maptiler-routing :focus-visible {
@@ -801,6 +847,8 @@
   z-index: 2;
   max-height: 285px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--maptiler-routing-scrollbar-thumb) var(--maptiler-routing-scrollbar-track);
   list-style: none;
   margin: 0;
   padding: 0;
@@ -909,8 +957,14 @@
    the value on the left and a chevron on the right. */
 .maptiler-routing-dropdown {
   position: relative;
-  /* the basis is the pill's own content, so a longer value still takes more of
-     the row than a shorter one, as the design has it */
+}
+
+/* In the filter row, the basis is the pill's own content, so a longer value
+   still takes more of the row than a shorter one, as the design has it. The
+   download menu's icon toggle wants none of that, and gets none: a flex
+   item's default is not to grow, so it is left off this selector rather than
+   stated and immediately undone. */
+.maptiler-routing-filters .maptiler-routing-dropdown {
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -1136,7 +1190,7 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 16px 0 8px;
+  padding: 64px 0 56px;
   text-align: center;
 }
 
@@ -1144,6 +1198,9 @@
   width: 64px;
   height: 64px;
   flex: none;
+  /* the drawing is the one thing in the panel with nothing beside it, so it is
+     given room rather than the 8px the words keep between themselves */
+  margin-block-end: 16px;
   /* a drawing rather than an icon: it carries its own colours and a gradient,
      so it is a background image and not one of the panel's masks */
   background-image: url([src/style/svg/routing-no-routes.svg]);
@@ -1175,7 +1232,8 @@
   display: flex;
   margin: 0 0 var(--maptiler-routing-gap);
   padding: 12px;
-  border: 1px solid var(--maptiler-routing-danger-color);
+  /* the tint carries the card on its own; an outline in the same red as the
+     words made a second, louder edge around them */
   border-radius: var(--maptiler-routing-radius);
   background: var(--maptiler-routing-danger-surface);
   color: var(--maptiler-routing-danger-color);
@@ -1228,7 +1286,15 @@
 
 /* Route cards */
 
+/* Spaced by the list rather than by a margin under each card, as the skeleton
+   above is: a trailing margin on the last card is space the body's own padding
+   already provides, and a scrolling body drops it in some browsers and keeps it
+   in others — so the gap under the last card matched neither the gap between
+   cards nor the padding down either side. */
 .maptiler-routing-routes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--maptiler-routing-gap);
   list-style: none;
   margin: 6px 0 0;
   padding: 0;
@@ -1248,7 +1314,6 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: var(--maptiler-routing-gap);
   padding: 24px;
   border-radius: var(--maptiler-routing-radius);
   background: var(--maptiler-routing-surface-alt);
@@ -1374,27 +1439,47 @@
 
 /* Turn by turn */
 
-/* RoutingPanel/Detail: the way back and the heading share a tinted bar. */
+/* RoutingPanel/Detail: the tinted "Route overview" bar, and the download
+   button beside it — a plain icon on the panel's own background, kept
+   deliberately outside the tinted bar rather than tinted along with it. */
+.maptiler-routing-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Fills the row up to the download button, whatever the title's own length —
+   the button that comes after it is never pushed off, since it takes none of
+   this growth itself. */
+.maptiler-routing-detail-header .maptiler-routing-detail-top {
+  flex: 1;
+  min-width: 0;
+}
+
+/* A 38px bar: the 32px back button with 3px of tint above and below it, rather
+   than the 8px the padding would otherwise put there. Fixed rather than left to
+   the contents, so the bar keeps its height whatever sits in it. */
 .maptiler-routing-detail-top {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px;
+  height: 38px;
+  padding: 3px 8px;
   border-radius: 8px;
   background: var(--maptiler-routing-surface-alt);
 }
 
 .maptiler-routing-detail-title {
   margin: 0;
+  /* a flex child's implicit min-width is its content's, which would keep this
+     from truncating at all — explicit 0 is what lets the ellipsis apply */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 16px;
   font-weight: 600;
   line-height: 21px;
-}
-
-.maptiler-routing-detail-summary {
-  margin: 8px 0 0;
-  color: var(--maptiler-routing-muted-color);
-  font-size: 14px;
 }
 
 .maptiler-routing-steps {
@@ -1425,6 +1510,23 @@
 
 .maptiler-routing button.maptiler-routing-step:hover {
   background: var(--maptiler-routing-surface-alt);
+}
+
+/* The row the user last clicked stays picked out, so the step the map is
+   showing is findable in a long list. A shade past the hover tint, which is
+   what keeps the two readable on the same row. */
+.maptiler-routing button.maptiler-routing-step[data-active] {
+  background: var(--maptiler-routing-surface-hover);
+}
+
+/* A step spans the full width of a list that scrolls, so the panel's own ring —
+   drawn outside the element, 1px clear of it — has its sides beyond the
+   scrolling box and is clipped to two blue lines across the row. Drawn inside
+   instead, the way the route card's ring is — and the ring is the keyboard's,
+   so a row focused by a click (see focusQuietly) is left to its background. */
+.maptiler-routing .maptiler-routing-step:focus-visible:not([data-quiet-focus]) {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--maptiler-routing-accent);
 }
 
 /* two classes, so it outranks the generic icon sizing further down */
@@ -1477,6 +1579,9 @@
 .maptiler-routing-route-label {
   --maptiler-routing-label-selected: #3170fe;
   --maptiler-routing-label-alternate: #98b7ff;
+  /* the selected badge's blue: hovering a badge previews what picking it would
+     look like, so it goes the whole way rather than to a shade in between */
+  --maptiler-routing-label-hover: var(--maptiler-routing-label-selected);
 
   padding: 2px 6px;
   border: 2px solid #fff;
@@ -1489,7 +1594,36 @@
   line-height: 18px;
   white-space: nowrap;
   cursor: pointer;
-  /* the alternates sit under the selected badge, which is the one being read */
+  /* The badges stack among themselves — alternate, hovered, selected — inside
+     the 0-2 range MapLibre leaves them: its control corners sit at `z-index: 2`
+     and come later in the document, so anything above 2 here would lift a badge
+     over the routing panel itself. */
+  z-index: 0;
+}
+
+/* The dot dropped on the map where a step of the turn-by-turn guide happens,
+   moved from turn to turn as the user reads down the list. The map's standard
+   point marker: a filled accent disc inside a white ring, over a soft shadow,
+   so it reads on aerial imagery as well as on a pale street map. */
+.maptiler-routing-step-dot {
+  width: 14px;
+  height: 14px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--maptiler-routing-label-selected, #3170fe);
+  box-sizing: content-box;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 35%);
+  /* the badges' range, one below the selected one: the dot is a pointer's
+     answer to a list row, not a thing to click */
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* The badge follows its line: hovering either the line or the badge itself
+   highlights both, so the two never disagree about which route is under the
+   pointer. The selected badge keeps its own colour, as the selected line does. */
+.maptiler-routing-route-label[data-hovered]:not([data-selected]) {
+  background: var(--maptiler-routing-label-hover);
   z-index: 1;
 }
 

@@ -3,6 +3,7 @@ import { defaults } from "../constants/defaults";
 import { FetchError } from "../utils/errors";
 import { decodePolyline } from "./polyline";
 import { classifyRoutingError } from "./routing-errors";
+import { routeToGpx } from "./routing-export";
 import { describeRouteUsage, formatRouteArrival, formatRouteDistance, formatRouteDuration } from "./routing-format";
 import { getCoordinatesBounds, getLegCoordinates, getLineMidpoint, getRouteCoordinates, getRoutesBounds } from "./routing-geometry";
 import { parseRoutingErrorBody } from "./routing-request";
@@ -93,6 +94,7 @@ export const routing = {
    */
   classifyError: classifyRoutingError,
 
+  routeToGpx,
   decodePolyline,
   getLegCoordinates,
   getRouteCoordinates,

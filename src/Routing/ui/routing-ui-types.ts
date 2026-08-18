@@ -149,6 +149,12 @@ export type RoutingControlLabels = {
   showDetail?: string;
   /** Shown in the turn-by-turn view when the response carried no steps. */
   noSteps?: string;
+  /** Accessible name of the turn-by-turn view's download button. */
+  download?: string;
+  /** The "print a guide" option of that menu, saved as PDF through the browser's own print dialog. */
+  downloadPdf?: string;
+  /** The "save as GPX" option of that menu. */
+  downloadGpx?: string;
   /** Suffix after a route's arrival time. */
   eta?: string;
   /** Group label of the transport switcher. */
@@ -652,6 +658,14 @@ export type MaptilerRoutingControlOptions = {
         zoomOnStepClick?: boolean;
         /** Upper zoom bound when framing a step. Default: `16` */
         maxZoom?: number;
+        /**
+         * Whether the turn-by-turn view offers a download menu: a printable
+         * guide (saved as PDF through the browser's own print dialog) and the
+         * route as GPX.
+         *
+         * Default: `true`
+         */
+        download?: boolean;
       };
 
   /**

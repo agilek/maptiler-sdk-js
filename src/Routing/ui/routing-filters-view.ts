@@ -286,7 +286,7 @@ export class FiltersView {
    * id so a consumer's stylesheet can reach one in particular.
    */
   private createDropdown(filter: string, label: string, ariaLabel: string): Dropdown {
-    const dropdown = new Dropdown(label, ariaLabel);
+    const dropdown = Dropdown.pill(label, ariaLabel);
     dropdown.element.dataset.filter = filter;
     this.dropdowns.push(dropdown);
     return dropdown;

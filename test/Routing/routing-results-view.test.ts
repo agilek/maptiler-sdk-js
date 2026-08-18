@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { ResultsView } from "../../src/Routing/ui/routing-results-view";
 import { RC, resolveControlOptions } from "../../src/Routing/ui/routing-ui-defaults";
 import type { RoutingPanelContext } from "../../src/Routing/ui/routing-ui-context";
 import { FetchError } from "../../src/utils/errors";
+import { makeRoute, makeStep } from "./fixtures";
 
 /** A rejection shaped like the one `routing.directions` throws. */
 function fetchError(status: number, detail?: string): FetchError {
@@ -100,6 +101,21 @@ describe("ResultsView, when there is no route to show", () => {
     }
   });
 
+  it("lists no cards under the dead end, whatever the session still holds", () => {
+    // a session left holding the previous mode's answer: the cards would read
+    // as the routes the heading above them says do not exist
+    const stale = context();
+    stale.routing.getRoutes = () => [makeRoute([[[8.54, 47.37]]])];
+    stale.routing.getSelectedIndex = () => 0;
+
+    const view = new ResultsView(stale);
+    view.setStatus("error", fetchError(400, "Maximum path distance exceeded"));
+    view.render();
+
+    expect(stateOf(view).notFoundShown).toBe(true);
+    expect(view.element.querySelector<HTMLElement>(`.${RC.routes}`)?.hidden).toBe(true);
+  });
+
   it("takes the words from the labels, so it can be translated", () => {
     const options = resolveControlOptions({ labels: { noRoutes: "Aucun itinéraire", noRoutesHint: "Essayez un autre mode." } });
     const view = new ResultsView({ ...context(), options } as RoutingPanelContext);
@@ -108,5 +124,110 @@ describe("ResultsView, when there is no route to show", () => {
 
     expect(stateOf(view).title).toBe("Aucun itinéraire");
     expect(stateOf(view).hint).toBe("Essayez un autre mode.");
+  });
+});
+
+describe("ResultsView, in the turn-by-turn view", () => {
+  /** Every step the view asked the session to mark on the map, in order. */
+  let highlighted: unknown[] = [];
+
+  beforeEach(() => {
+    highlighted = [];
+  });
+
+  /** A context whose session answers with two steps of one leg. */
+  function withSteps(): RoutingPanelContext {
+    const base = context();
+    const routing = base.routing as unknown as Record<string, unknown>;
+    routing.getSteps = () => [
+      { legIndex: 0, stepIndex: 0, key: "0-0", step: makeStep({ maneuver: { instruction: "Drive east.", type: "start" } }) },
+      { legIndex: 0, stepIndex: 1, key: "0-1", step: makeStep({ maneuver: { instruction: "Turn left.", type: "leftTurn" } }) },
+    ];
+    // clicking a step moves the map by default, which this session does not have
+    routing.zoomToStep = () => undefined;
+    routing.highlightStep = (step: unknown) => {
+      highlighted.push(step);
+    };
+    return base;
+  }
+
+  function stepButtons(view: ResultsView) {
+    return [...view.element.querySelectorAll<HTMLElement>(`.${RC.step}`)];
+  }
+
+  it("marks the step the user clicked, and only that one", () => {
+    const view = new ResultsView(withSteps());
+    view.showDetail();
+
+    const [first, second] = stepButtons(view);
+    second.click();
+
+    expect(second.dataset.active).toBe("");
+    expect(first.dataset.active).toBeUndefined();
+
+    first.click();
+    expect(first.dataset.active).toBe("");
+    expect(second.dataset.active).toBeUndefined();
+  });
+
+  it("keeps the mark on the same step when the list is rebuilt", () => {
+    const view = new ResultsView(withSteps());
+    view.showDetail();
+
+    stepButtons(view)[1].click();
+    view.render();
+
+    expect(stepButtons(view).map((step) => step.dataset.active)).toEqual([undefined, ""]);
+  });
+
+  it("moves the dot from turn to turn as the pointer goes down the list, and back to the clicked one", () => {
+    const view = new ResultsView(withSteps());
+    view.showDetail();
+    const [first, second] = stepButtons(view);
+
+    first.dispatchEvent(new Event("mouseenter"));
+    expect((highlighted.at(-1) as { key: string }).key).toBe("0-0");
+
+    second.dispatchEvent(new Event("mouseenter"));
+    expect((highlighted.at(-1) as { key: string }).key).toBe("0-1");
+
+    // nothing was clicked, so passing off the row leaves the map unmarked
+    second.dispatchEvent(new Event("mouseleave"));
+    expect(highlighted.at(-1)).toBeNull();
+
+    second.click();
+    first.dispatchEvent(new Event("mouseenter"));
+    first.dispatchEvent(new Event("mouseleave"));
+    expect((highlighted.at(-1) as { key: string }).key).toBe("0-1");
+  });
+
+  it("puts the dot on a clicked step even when no hover came first", () => {
+    const view = new ResultsView(withSteps());
+    view.showDetail();
+
+    stepButtons(view)[1].click();
+
+    expect((highlighted.at(-1) as { key: string }).key).toBe("0-1");
+  });
+
+  it("takes the dot off the map when the guide is closed", () => {
+    const view = new ResultsView(withSteps());
+    view.showDetail();
+    stepButtons(view)[0].click();
+
+    view.showRoutes();
+
+    expect(highlighted.at(-1)).toBeNull();
+  });
+
+  it("opens a fresh guide with nothing marked", () => {
+    const view = new ResultsView(withSteps());
+    view.showDetail();
+    stepButtons(view)[1].click();
+
+    view.showRoutes();
+    view.showDetail();
+
+    expect(stepButtons(view).every((step) => step.dataset.active === undefined)).toBe(true);
   });
 });

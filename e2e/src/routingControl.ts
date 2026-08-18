@@ -4,6 +4,7 @@ import { Map as MapTiler, MapStyle, MaptilerRoutingControl } from "../../src/ind
 
 const params = new URLSearchParams(window.location.search);
 const position = (params.get("position") as ControlPosition | null) ?? "top-right";
+const download = params.get("download") !== "off";
 
 const map = new MapTiler({
   container: "map",
@@ -34,13 +35,17 @@ map.enableRouting({
   fitBounds: false,
 });
 
-const control = new MaptilerRoutingControl({});
+const control = new MaptilerRoutingControl({ turnByTurn: { download } });
 
 for (const type of ["routinguiopen", "routinguiclose", "routinguiviewchange", "routinguistepclick", "routinguipickstart", "routinguipickend"] as const) {
   control.on(type, () => {
     window.__panelEvents.push({ type });
   });
 }
+
+control.on("routinguidownload", (event: { format: "pdf" | "gpx" }) => {
+  window.__panelEvents.push({ type: "routinguidownload", format: event.format });
+});
 
 map.addControl(control, position);
 window.__control = control;

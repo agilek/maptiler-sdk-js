@@ -99,6 +99,36 @@ export function focusQuietly(element: HTMLElement | null | undefined): void {
 }
 
 /**
+ * Downloads text content as a file, without navigating the page.
+ *
+ * A Blob URL rather than a `data:` URI, which some browsers cap in length.
+ *
+ * Two details Chromium is forgiving about and Firefox is not: the link has to
+ * be in the document for the click to count, and the URL has to outlive the
+ * task that clicked it — revoked on the next line, the download it was handed
+ * to is cancelled before it starts. So: inserted, clicked, removed, and the
+ * revoke deferred to a later task, by which point the browser has read it.
+ */
+export function downloadText(filename: string, content: string, mimeType: string): void {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.rel = "noopener";
+  link.style.display = "none";
+
+  document.body.append(link);
+  link.click();
+  link.remove();
+
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, 0);
+}
+
+/**
  * Coalesces DOM writes into one animation frame.
  *
  * Several state changes in the same tick (a response arriving, a selection

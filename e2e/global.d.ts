@@ -16,7 +16,16 @@ declare global {
     /** The panel, for the routingControl fixture. */
     __control: MaptilerRoutingControl;
     /** The panel's own events, recorded by the routingControl fixture. */
-    __panelEvents: { type: string }[];
+    __panelEvents: { type: string; format?: "pdf" | "gpx" }[];
+    /**
+     * Links `downloadText` tried to click, captured by routingControl.test.ts's
+     * stub of `HTMLAnchorElement.prototype.click` — a real click starts a
+     * browser download a test cannot observe, so the link's own attributes,
+     * captured the instant before, stand in for it.
+     */
+    __downloadedLinks: { filename: string; href: string }[];
+    /** Times `window.print` was called, recorded by routingControl.test.ts's stub of it. */
+    __printCalls: number;
     __testUtils?: {
       getHaloConfig: () => any;
       getSpaceConfig: () => any;

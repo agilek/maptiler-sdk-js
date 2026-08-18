@@ -186,6 +186,81 @@ test("opens turn-by-turn from a route card, and the back button returns to the l
 
 //#endregion
 
+//#region Download menu
+
+test("saves the route as GPX", async ({ page }) => {
+  // stubbed rather than let it run: a real click would start a browser
+  // download, which the test cannot observe — the link's own attributes,
+  // captured the instant before, are proof enough of what downloadText built.
+  // Registered before the fixture navigates, which is what makes it apply.
+  await page.addInitScript(() => {
+    window.__downloadedLinks = [];
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- called with .call(this) below, so the unbound reference is never invoked on its own
+    const originalClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+      if (this.download) window.__downloadedLinks.push({ filename: this.download, href: this.href });
+      else originalClick.call(this);
+    };
+  });
+
+  await setup(page);
+
+  await page.getByRole("button", { name: "Show the turn-by-turn directions" }).first().click();
+  await page.getByRole("button", { name: "Download this route" }).click();
+  await page.getByText("Download route (GPX)").click();
+
+  const links = await page.evaluate(() => window.__downloadedLinks);
+  expect(links).toHaveLength(1);
+  expect(links[0].filename).toBe("route.gpx");
+  expect(links[0].href).toMatch(/^blob:/);
+
+  const events = await page.evaluate(() => window.__panelEvents.filter((event) => event.type === "routinguidownload"));
+  expect(events).toEqual([{ type: "routinguidownload", format: "gpx" }]);
+});
+
+test("prints a turn-by-turn guide", async ({ page }) => {
+  // the print dialog is native browser UI, out of a test's reach — and a real
+  // `print()` fires `afterprint` almost immediately in a headless browser,
+  // which would tear the iframe down before this can inspect it. Stubbed
+  // instead, before the fixture navigates: a call recorded here is proof the
+  // iframe was built and handed to `print()`, which is what this owns.
+  await page.addInitScript(() => {
+    const top = window.top ?? window;
+    top.__printCalls = 0;
+    window.print = () => {
+      top.__printCalls++;
+    };
+  });
+
+  await setup(page);
+
+  await page.getByRole("button", { name: "Show the turn-by-turn directions" }).first().click();
+  await page.getByRole("button", { name: "Download this route" }).click();
+  await page.getByText("Download guide (PDF)").click();
+
+  // the fixture page has no iframe of its own, so this is unambiguously the
+  // one printRouteGuide built. Attached rather than visible: the iframe is
+  // deliberately 0×0 and visibility:hidden — it exists only for `print()`,
+  // never to be seen.
+  const iframe = page.locator("iframe");
+  await expect(iframe).toHaveCount(1);
+  await expect(iframe.contentFrame().getByRole("heading", { name: "Route overview" })).toBeAttached();
+  await expect.poll(() => page.evaluate(() => window.__printCalls)).toBe(1);
+
+  const events = await page.evaluate(() => window.__panelEvents.filter((event) => event.type === "routinguidownload"));
+  expect(events).toEqual([{ type: "routinguidownload", format: "pdf" }]);
+});
+
+test("hides the download menu when turnByTurn.download is off", async ({ page }) => {
+  await setup(page, { download: "off" });
+
+  await page.getByRole("button", { name: "Show the turn-by-turn directions" }).first().click();
+
+  await expect(page.getByRole("button", { name: "Download this route" })).toHaveCount(0);
+});
+
+//#endregion
+
 //#region Visual regression
 
 test("panel screenshot", async ({ page }) => {
