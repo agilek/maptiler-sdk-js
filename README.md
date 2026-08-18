@@ -2068,8 +2068,26 @@ const coordinates = routing.getRouteCoordinates(response.route);
 
 The same namespace carries the helpers for working with a response: `decodePolyline`,
 `getLegCoordinates`, `getRouteCoordinates`, `getRoutesBounds`, `getStepCoordinates`,
-`flattenRouteSteps`, `formatRouteDuration`, `formatRouteDistance`, `formatRouteArrival` and
-`describeRouteUsage`.
+`flattenRouteSteps`, `formatRouteDuration`, `formatRouteDistance`, `formatRouteArrival`,
+`describeRouteUsage` and `routeToGpx`.
+
+Turn-by-turn instructions are not in the response by default — ask for them, and note where the
+option lives, since a `detailLevel` written one level up is accepted and quietly ignored:
+
+```ts
+const response = await routing.directions({
+  profile: "car",
+  locations: [/* … */],
+  response: { additionalData: { detailLevel: "instructions" } },   // "legs" omits `steps`
+});
+```
+
+`routeToGpx` encodes a computed route as a GPX 1.1 track — every leg's geometry decoded and joined
+into one segment, in travel order — which is what the panel's own "Download route (GPX)" saves:
+
+```ts
+const gpx = routing.routeToGpx(response.route, "Zurich to Karlovy Vary");
+```
 
 A rejection is a `FetchError` carrying the status and the service's own message. That message is
 written for a developer — "Maximum path distance exceeded" is what a walking route across a country
@@ -2129,10 +2147,22 @@ new MaptilerRoutingControl({
   clickToAddWaypoint: "armed",          // "off" | "armed" | "always"
   dragWaypointsOnMap: true,
   reorderWaypoints: true,
-  turnByTurn: { zoomOnStepClick: true, maxZoom: 15 },
+  turnByTurn: { zoomOnStepClick: true, maxZoom: 15, download: true },
   collapsible: true,
 });
 ```
+
+Pointing at a turn in the guide — with the pointer or with the keyboard — drops a dot on the map
+where it happens, and moves it from turn to turn as the user reads down the list; clicking a turn
+keeps the dot there and marks the row. The dot is styled through the `.maptiler-routing-step-dot`
+class, and the same marker is available headlessly as `routing.highlightStep(step)` (pass `null` to
+take it away).
+
+The guide also offers to save itself: `download` (default `true`) puts a menu on the turn-by-turn
+view with two entries — a printable guide, which opens the browser's own print dialog and is saved
+as PDF from there, and the route as a GPX track. Both fire `routinguidownload` with the format they
+produced, and `turnByTurn: { download: false }` removes the menu. The GPX is the same document
+`routing.routeToGpx` returns, so a custom UI can offer the download without the panel.
 
 **2. Theme.** The panel ships two palettes, light and dark, and no way to configure the colours
 inside them:
@@ -2251,6 +2281,50 @@ new MaptilerRoutingControl({
 Hooks exist for `transportModes`, `waypointRow`, `routeCard`, `step`, `status` and `footer`. If you
 find yourself replacing all of them, use the headless session directly instead.
 
+#### Driving the panel from your own UI
+
+The control is not a closed widget: everything a user does in it, your page can do too. There are
+two objects, and the split is worth learning — the control owns the UI, and the session behind it
+owns the routing state:
+
+```ts
+const control = new MaptilerRoutingControl();
+map.addControl(control, "top-left");
+
+// the UI: what the panel is showing
+control.toggle();              // open or close it, as the launcher button does
+control.showRouteDetail();     // open the turn-by-turn view for the selected route
+control.showRouteList();       // and back to the cards
+control.togglePickOnMap();     // arm "click the map to add a stop"
+control.refresh();             // re-render the panel from the current session state
+
+// the session: the waypoints, the request and its results
+const routing = control.getRouting();
+routing?.setWaypoints([[8.5417, 47.3769], [12.8724, 50.2329]]);
+routing?.selectRoute(1);       // pick an alternate — cards and map both follow
+routing?.highlightStep(step);  // drop the dot on a turn; null takes it away
+```
+
+That is what a "Directions to here" button on your own POI popup calls: `setWaypoints`, then
+`control.open()`. The full session surface is under [the headless session](#the-headless-session)
+above.
+
+It works in the other direction as well. The session's events report what the user did in the panel,
+so the rest of your interface can follow along:
+
+```ts
+routing?.on("routingroutes", ({ routes, selectedIndex }) => {
+  myTripSummary.textContent = `${routes.length} routes, ${routes[selectedIndex].summary.totalLength} km`;
+});
+routing?.on("routingerror", ({ error }) => myErrorLog.push(error));
+```
+
+The panel additionally fires its own events on the control, for the cases where what the user is
+*looking at* matters and not just what was computed: `routinguiopen` / `routinguiclose`,
+`routinguiviewchange` (`{ view: "list" | "detail" }`), `routinguistepclick` (`{ entry }`),
+`routinguipickstart` / `routinguipickend` around click-to-add-a-stop, and `routinguidownload`
+(`{ format: "pdf" | "gpx" }`).
+
 #### Styling the route on the map
 
 ```ts
@@ -2258,6 +2332,7 @@ map.enableRouting({
   render: {
     selected: { color: "#e2001a", width: 7 },
     alternate: { color: "#c3c9d6", width: 4 },
+    hover: { color: "#f07f8b" },   // the alternate under the pointer; `enabled: false` turns it off
     casing: { color: "#fff", width: 11 },
     beforeId: "my-layer",   // default: the style's first symbol layer
   },
@@ -2276,6 +2351,10 @@ clicking one selects its route. Pass `routeLabels: false` to draw none, or retur
 from `format` to drop an individual badge. They are styled through the
 `.maptiler-routing-route-label` class (with `[data-selected]` for the chosen route), which follows
 the Map Controls UI design.
+
+Alternates are drawn at the selected route's width in a lighter blue, and the one under the pointer
+takes the `hover` paint — the map's answer to the hover state a route card has in the panel. Clicking
+it selects it, as before.
 
 The route survives style changes: the source and layers are re-added after every `setStyle`.
 

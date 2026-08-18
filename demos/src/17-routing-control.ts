@@ -12,7 +12,6 @@ const map = new Map({
 
 const ZURICH: [number, number] = [8.5417, 47.3769];
 const KARLOVY_VARY: [number, number] = [12.8724, 50.2329];
-const MUNICH: [number, number] = [11.582, 48.1351];
 
 /**
  * Where this page reports what it did.
@@ -437,20 +436,6 @@ document.querySelectorAll<HTMLButtonElement>("#panel [data-search]").forEach((bu
 });
 
 //#endregion
-
-//#region Programmatic API
-
-document.querySelectorAll<HTMLButtonElement>("#panel [data-api]").forEach((button) => {
-  button.addEventListener("click", () => {
-    const routing = control.getRouting();
-    const value = button.dataset.api;
-
-    if (value === "waypoints") routing?.setWaypoints([ZURICH, MUNICH, KARLOVY_VARY]);
-    else if (value === "select") routing?.selectRoute(1);
-    else if (value === "detail") control.showRouteDetail();
-    else if (value === "collapse") control.toggle();
-  });
-});
 
 document.querySelectorAll<HTMLButtonElement>("#panel [data-position]").forEach((button) => {
   button.addEventListener("click", () => {

@@ -119,6 +119,10 @@ export function buildDirectionsRequest(state: ResolvedRoutingState): DirectionsR
       ...(state.alternates > 0 ? { alternates: state.alternates } : {}),
       additionalData: { detailLevel: state.detailLevel },
     },
+    // the request type is a union discriminated on `profile`, and a `profile`
+    // widened to `RoutingProfile` matches no single member of it — the cast
+    // asserts the pairing with `profileOptions` that `pruneProfileOptions` has
+    // already enforced
   } as DirectionsRequestOptions;
 }
 

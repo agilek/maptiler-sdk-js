@@ -22,6 +22,8 @@
   - `RoutingController.getLastError()` reports the failure the last computation ended with, so a panel added — or re-added — after the fact starts in the state the session is actually in rather than waiting for a result that already failed.
   - Whenever a request is in flight — the first one or a recalculation — the results are shimmering placeholders the size of the cards they stand in for, rather than a line of text over numbers that are about to change. They stop moving under `prefers-reduced-motion`.
   - The panel is customisable through options (which transport modes and filters exist, units, alternates, interactions), CSS custom properties and a documented class-name contract, `labels` and `formatters` for localization, and `renderers.*` hooks that replace one subsection at a time.
+  - The turn-by-turn view offers to save itself: a printable guide, which opens the browser's own print dialog and is saved as PDF from there, and the route as a GPX 1.1 track. Both fire `routinguidownload` with the format they produced, and `turnByTurn: { download: false }` removes the menu. The guide is built in a hidden iframe, so a popup blocker cannot catch it and the host page is never navigated away from.
+  - `routing.routeToGpx(route, name)` encodes a computed route as a GPX track — every leg's geometry decoded and joined into one segment, in travel order — so a custom UI can offer the same download without the panel.
   - `routing.directions()` exposes the API on its own, alongside helpers for decoding polylines, joining leg geometry, flattening steps and formatting distances and durations.
   - Enable it with `routing: true` / `routingControl: true` on the map, or per call. Each computed route counts against your MapTiler Cloud API key quota.
 
