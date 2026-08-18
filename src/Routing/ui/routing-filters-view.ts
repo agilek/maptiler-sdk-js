@@ -1,5 +1,5 @@
 import { supportsAvoidances, supportsBicycleType, supportsRouteMode, supportsTravelSpeed, supportsVehicleOptions } from "../routing-constants";
-import type { BicycleRouteType, CarRouteMode, RoutingAvoidances, RoutingProfile, RoutingUnits } from "../types";
+import type { BicycleRouteType, CarRouteMode, RoutingAvoidances, RoutingProfile, RoutingProfileOptions, RoutingUnits } from "../types";
 import { Dropdown, choiceRow, menuNote, menuRow, numberField, stepperRow, switchField } from "./routing-dropdown";
 import type { RoutingPanelContext } from "./routing-ui-context";
 import { PROFILE_ICONS, RC } from "./routing-ui-defaults";
@@ -110,7 +110,17 @@ export class FiltersView {
   private routeMode: CarRouteMode = "fastest";
   private vehicle: { weight?: number; height?: number; length?: number; axleLoad?: number; topSpeed?: number; hazmat?: boolean } = {};
   private bicycleType: BicycleRouteType | undefined = undefined;
-  private travelSpeed: number | undefined = undefined;
+
+  /**
+   * The pace filter's value, remembered per profile.
+   *
+   * One field between the two would make a 22 km/h bicycle into a 22 km/h
+   * walk on the first switch — and now that a switch re-sends the row's values
+   * (see {@link FiltersView.syncProfileOptions}), it would be asked for rather
+   * than merely displayed.
+   */
+  private cyclingSpeed: number | undefined = undefined;
+  private walkingSpeed: number | undefined = undefined;
 
   /** Departure moment, or `null` for leaving now. */
   private departure: Date | null = null;
@@ -120,6 +130,16 @@ export class FiltersView {
 
   /** Live dropdowns, kept so their document listeners can be dropped. */
   private dropdowns: Dropdown[] = [];
+
+  /**
+   * `false` until the row has been built once.
+   *
+   * The session's options are adopted on that first pass rather than in the
+   * constructor: the panel may still move the session onto another profile
+   * between the two (see `alignProfileWithModes`), and what is adopted has to
+   * be the options of the profile the row is actually about to draw.
+   */
+  private hydrated = false;
 
   constructor(context: RoutingPanelContext) {
     this.context = context;
@@ -241,6 +261,17 @@ export class FiltersView {
   private renderFilters(): void {
     const { filters, unitsSwitchable } = this.context.options;
     const profile = this.context.routing.getProfile();
+
+    if (!this.hydrated) {
+      this.hydrated = true;
+      // the session outlives any single panel and may already carry options —
+      // set programmatically, or left by a panel that was removed and re-added
+      this.adoptSessionOptions();
+      // and what the pills show that the session does not hold yet — the route
+      // preference, which is drawn as "Fastest" from the first render — is sent
+      // rather than only displayed
+      this.pushProfileOptions();
+    }
     const fragment = document.createDocumentFragment();
 
     // the row is rebuilt from scratch, so the previous dropdowns' document
@@ -507,10 +538,12 @@ export class FiltersView {
   private buildSpeedFilter(): HTMLElement {
     const { labels } = this.context.options;
     const dropdown = this.createDropdown("speed", labels.speed, labels.speed);
-    const rowLabel = this.context.routing.getProfile() === "bicycle" ? labels.cyclingSpeed : labels.walkingSpeed;
+    const cycling = this.context.routing.getProfile() === "bicycle";
+    const rowLabel = cycling ? labels.cyclingSpeed : labels.walkingSpeed;
 
-    const input = numberField(this.travelSpeed, labels.speedUnit, 1, 1, (value) => {
-      this.travelSpeed = value;
+    const input = numberField(cycling ? this.cyclingSpeed : this.walkingSpeed, labels.speedUnit, 1, 1, (value) => {
+      if (cycling) this.cyclingSpeed = value;
+      else this.walkingSpeed = value;
       dropdown.setLabel(value === undefined ? labels.speed : `${value.toString()} ${labels.speedUnit}`);
       this.pushProfileOptions();
     });
@@ -537,29 +570,104 @@ export class FiltersView {
   }
 
   /**
+   * The filter state as the current profile's option object.
+   *
+   * Built per profile rather than merged from parts: the option shapes block
+   * each other's keys, so one object carrying both a `mode` and a
+   * `cyclingSpeed` matches none of them.
+   */
+  private profileOptions(): RoutingProfileOptions {
+    switch (this.context.routing.getProfile()) {
+      case "car":
+        return { mode: this.routeMode, avoidances: this.avoidances };
+      case "truck":
+        return { ...this.vehicle, avoidances: this.avoidances };
+      case "bicycle":
+        return { type: this.bicycleType, cyclingSpeed: this.cyclingSpeed };
+      default:
+        return { walkingSpeed: this.walkingSpeed };
+    }
+  }
+
+  /**
+   * Takes the session's options for the current profile as the row's own.
+   *
+   * Without this a panel attached to a session that already carries options —
+   * one set programmatically, or left behind by a panel that was removed and
+   * re-added — would draw empty pills over them, and the first thing the user
+   * touched would push those blanks back over what the session was routing
+   * with.
+   */
+  private adoptSessionOptions(): void {
+    const options = this.context.routing.getProfileOptions() as {
+      mode?: CarRouteMode;
+      avoidances?: RoutingAvoidances;
+      weight?: number;
+      height?: number;
+      length?: number;
+      axleLoad?: number;
+      topSpeed?: number;
+      hazmat?: boolean;
+      type?: BicycleRouteType;
+      cyclingSpeed?: number;
+      walkingSpeed?: number;
+    };
+
+    switch (this.context.routing.getProfile()) {
+      case "car":
+        this.routeMode = options.mode ?? this.routeMode;
+        this.avoidances = { ...options.avoidances };
+        return;
+      case "truck":
+        this.vehicle = {
+          weight: options.weight,
+          height: options.height,
+          length: options.length,
+          axleLoad: options.axleLoad,
+          topSpeed: options.topSpeed,
+          hazmat: options.hazmat,
+        };
+        this.avoidances = { ...options.avoidances };
+        return;
+      case "bicycle":
+        this.bicycleType = options.type ?? this.bicycleType;
+        this.cyclingSpeed = options.cyclingSpeed ?? this.cyclingSpeed;
+        return;
+      default:
+        this.walkingSpeed = options.walkingSpeed ?? this.walkingSpeed;
+    }
+  }
+
+  /**
    * Pushes the filter state into the session.
    *
    * The profile options are overwritten rather than merged, and the session
    * drops the keys that do not apply to the current profile when it builds the
    * request.
+   *
+   * Silent when the session already holds what the row would send: every push
+   * invalidates the route, and re-sending the same options would spend a
+   * request on an answer that cannot differ.
    */
   private pushProfileOptions(): void {
-    // built per profile rather than merged from parts: the option shapes block
-    // each other's keys, so one object carrying both a `mode` and a
-    // `cyclingSpeed` matches none of them
-    switch (this.context.routing.getProfile()) {
-      case "car":
-        this.context.routing.setProfileOptions({ mode: this.routeMode, avoidances: this.avoidances });
-        return;
-      case "truck":
-        this.context.routing.setProfileOptions({ ...this.vehicle, avoidances: this.avoidances });
-        return;
-      case "bicycle":
-        this.context.routing.setProfileOptions({ type: this.bicycleType, cyclingSpeed: this.travelSpeed });
-        return;
-      default:
-        this.context.routing.setProfileOptions({ walkingSpeed: this.travelSpeed });
-    }
+    const next = this.profileOptions();
+    if (optionsKey(next) === optionsKey(this.context.routing.getProfileOptions())) return;
+
+    this.context.routing.setProfileOptions(next);
+  }
+
+  /**
+   * Re-sends the filter state after the session moved to another profile.
+   *
+   * The session holds one option object, which belongs to the profile it was
+   * set for; the row remembers a set per profile. Switching transport mode
+   * therefore leaves the two disagreeing — the truck's pills would show the
+   * dimensions the user entered while the request, still carrying the car's
+   * object, asked for a truck route without them. This puts the row's own
+   * values back on the session, so what is drawn is what is asked for.
+   */
+  syncProfileOptions(): void {
+    this.pushProfileOptions();
   }
 
   /** Closes every open menu. Called when the map moves under the panel. */
@@ -574,4 +682,20 @@ export class FiltersView {
   }
 
   //#endregion
+}
+
+/**
+ * A comparable key for an options object.
+ *
+ * Order-independent and blind to unset keys, so two objects that build the
+ * same request compare equal however they were assembled — `avoidances` is
+ * nested, which is why this recurses rather than comparing one level.
+ */
+function optionsKey(options: object): string {
+  const entries: [string, unknown][] = Object.entries(options)
+    .filter(([, value]) => value !== undefined)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => [key, value !== null && typeof value === "object" ? optionsKey(value as object) : value]);
+
+  return JSON.stringify(entries);
 }

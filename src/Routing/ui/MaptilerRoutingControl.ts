@@ -401,6 +401,11 @@ export class MaptilerRoutingControl extends maplibregl.Evented implements IContr
       // screen, and rebuilding for them would tear down the menu the user is
       // still working in, one press into stepping a departure or ticking a
       // second road type to avoid.
+      //
+      // A switch also hands the row's own values back to the session: the row
+      // remembers a set of options per profile and the session holds one
+      // object, so without it the truck would be routed with the car's.
+      if (event.change === "profile") this.filtersView?.syncProfileOptions();
       if (event.change === "profile" || event.change === "units") this.queue?.schedule(REGION.FILTERS);
       this.queue?.schedule(REGION.RESULTS);
     };
