@@ -85,7 +85,7 @@ function apply(patch: Partial<MaptilerRoutingControlOptions>) {
 }
 
 /** Style the map is on, which is the one piece of state not held in `options`. */
-let styleId = "streets-v2";
+let styleId = "streets-v4";
 
 /**
  * Marks the button in each group that matches what is currently applied.
