@@ -33,6 +33,23 @@ describe("firstSymbolLayerId", () => {
   it("returns undefined for an empty style", () => {
     expect(firstSymbolLayerId([])).toBeUndefined();
   });
+
+  it("skips an early symbol layer that has more line layers drawn after it", () => {
+    // Mirrors MapTiler Outdoor: contour labels (symbol) sit among the
+    // terrain lines, then trail overlays (line) resume on top of them. The
+    // first symbol layer there is a trap — anchoring on it would sink the
+    // route under those later trails.
+    const interleaved = [
+      { id: "bg", type: "background" },
+      { id: "hillshade", type: "hillshade" },
+      { id: "contour", type: "line" },
+      { id: "contour-labels", type: "symbol" },
+      { id: "trail", type: "line" },
+      { id: "place-labels", type: "symbol" },
+    ] as LayerSpecification[];
+
+    expect(firstSymbolLayerId(interleaved)).toBe("place-labels");
+  });
 });
 
 //#endregion

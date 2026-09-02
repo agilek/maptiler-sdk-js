@@ -25,17 +25,31 @@ export const EMPTY_ROUTE_COLLECTION: FeatureCollection<LineString, RouteFeatureP
 };
 
 /**
- * Id of the style's first `symbol` layer.
+ * Id of the first layer in the style's trailing run of `symbol` layers.
  *
  * @param layers - The style's layers, in order.
- * @returns The id, or `undefined` when the style has no symbol layer.
+ * @returns The id, or `undefined` when the style's last layer is not a symbol layer.
  *
  * @remarks
  * This is the default insertion point for the route layers, so a route is
  * drawn under the labels rather than over them.
+ *
+ * Not simply the *first* symbol layer: some styles (MapTiler Outdoor among
+ * them) interleave a handful of symbol layers — contour/ridge/cliff labels —
+ * among earlier line layers, then resume drawing lines afterwards (trail and
+ * path overlays). Anchoring on the first one would sink the route under
+ * those later lines. Anchoring on the start of the run that runs unbroken to
+ * the end of the style avoids that, and is equivalent to "first symbol
+ * layer" for styles that don't interleave, so this changes nothing for
+ * those.
  */
 export function firstSymbolLayerId(layers: readonly LayerSpecification[]): string | undefined {
-  return layers.find((layer) => layer.type === "symbol")?.id;
+  let boundary: string | undefined;
+  for (let i = layers.length - 1; i >= 0; i--) {
+    if (layers[i].type !== "symbol") break;
+    boundary = layers[i].id;
+  }
+  return boundary;
 }
 
 /**
