@@ -20,6 +20,20 @@ const ROUTE_LABEL_CLASS = "maptiler-routing-route-label";
 /** Class of the dot marking the step being pointed at. Part of the same contract. */
 const STEP_DOT_CLASS = "maptiler-routing-step-dot";
 
+/** Class of every waypoint marker's element. Part of the same contract. */
+const WAYPOINT_MARKER_CLASS = "maptiler-routing-waypoint-marker";
+
+/** Toggled on a waypoint marker's element for the length of a drag, so it can be picked up visually. Part of the same contract. */
+const WAYPOINT_MARKER_DRAGGING_CLASS = "maptiler-routing-marker-dragging";
+
+/**
+ * Class of the wrapper inserted around a waypoint marker's own content, so the
+ * pick-up animation has somewhere to live that isn't the marker's root
+ * element — MapLibre puts its own positioning transform there, and animating
+ * the same element would fight it. Part of the same contract.
+ */
+const WAYPOINT_MARKER_PIN_CLASS = "maptiler-routing-marker-pin";
+
 /** What a waypoint is to the route it belongs to, which picks its marker options. */
 type WaypointRole = "origin" | "destination" | "via";
 
@@ -70,7 +84,7 @@ export class RouteRenderer {
    * construction: a marker whose role changed has to be rebuilt, and this is
    * what says whether it did.
    */
-  private readonly markers = new Map<string, { marker: Marker; role: WaypointRole }>();
+  private readonly markers = new Map<string, { marker: Marker; role: WaypointRole; cleanupDrag?: () => void }>();
 
   /** The dot marking the step the user is pointing at, while there is one. */
   private stepMarker: Marker | null = null;
@@ -389,20 +403,60 @@ export class RouteRenderer {
         return;
       }
 
+      existing?.cleanupDrag?.();
       existing?.marker.remove();
 
-      const marker = new Marker(this.markerOptionsFor(role)).setLngLat(waypoint.lngLat).addTo(this.map);
+      const markerOptions = this.markerOptionsFor(role);
+      const marker = new Marker(markerOptions).setLngLat(waypoint.lngLat).addTo(this.map);
+      const element = marker.getElement();
+      element.classList.add(WAYPOINT_MARKER_CLASS);
+
+      // The marker's own content (the default pin, or a caller-supplied
+      // element) moves into a wrapper so it — not the root MapLibre
+      // positions — is what lifts on drag.
+      const pin = document.createElement("div");
+      pin.className = WAYPOINT_MARKER_PIN_CLASS;
+      while (element.firstChild) pin.appendChild(element.firstChild);
+      element.appendChild(pin);
+
+      let cleanupDrag: (() => void) | undefined;
+
+      if (markerOptions.draggable) {
+        const lift = () => element.classList.add(WAYPOINT_MARKER_DRAGGING_CLASS);
+        const drop = () => element.classList.remove(WAYPOINT_MARKER_DRAGGING_CLASS);
+
+        // MapLibre's own "dragstart" only fires once the pointer has moved past
+        // its click-tolerance, which reads as a delayed, stiff pickup. Lifting
+        // on press instead makes grabbing the marker feel immediate. `drop` is
+        // bound to the window because the release can land off the marker — a
+        // plain click, or a drag that ends off the map entirely.
+        element.addEventListener("mousedown", lift);
+        element.addEventListener("touchstart", lift, { passive: true });
+        window.addEventListener("mouseup", drop);
+        window.addEventListener("touchend", drop);
+        window.addEventListener("touchcancel", drop);
+
+        cleanupDrag = () => {
+          element.removeEventListener("mousedown", lift);
+          element.removeEventListener("touchstart", lift);
+          window.removeEventListener("mouseup", drop);
+          window.removeEventListener("touchend", drop);
+          window.removeEventListener("touchcancel", drop);
+        };
+      }
 
       marker.on("dragend", () => {
+        element.classList.remove(WAYPOINT_MARKER_DRAGGING_CLASS);
         const { lng, lat } = marker.getLngLat();
         this.handlers.onWaypointDragEnd(waypoint.id, [lng, lat]);
       });
 
-      this.markers.set(waypoint.id, { marker, role });
+      this.markers.set(waypoint.id, { marker, role, cleanupDrag });
     });
 
     for (const [id, entry] of this.markers) {
       if (seen.has(id)) continue;
+      entry.cleanupDrag?.();
       entry.marker.remove();
       this.markers.delete(id);
     }
@@ -420,7 +474,10 @@ export class RouteRenderer {
   }
 
   private clearMarkers(): void {
-    for (const { marker } of this.markers.values()) marker.remove();
+    for (const { marker, cleanupDrag } of this.markers.values()) {
+      cleanupDrag?.();
+      marker.remove();
+    }
     this.markers.clear();
   }
 

@@ -1632,6 +1632,56 @@
   z-index: 2;
 }
 
+/* Waypoint marker pick-up
+
+   Dragging a waypoint should read as picking a real pin up off the map, not
+   sliding a flat icon across it: the pin rises a little while its ground
+   shadow stays put and tightens, then both settle back on release.
+
+   The lift lives on an inner wrapper (built in RouteRenderer around the
+   marker's own content) rather than the marker's root element, because
+   MapLibre puts its own positioning transform on the root — animating that
+   same element fights it, and visibly did before this was split out. The
+   shadow is a plain `::after` on the root itself, so it only ever moves when
+   the marker's real map position does. */
+.maptiler-routing-marker-pin {
+  transition: translate 180ms cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+.maptiler-routing-marker-dragging .maptiler-routing-marker-pin {
+  translate: 0 -5px;
+}
+
+/* The default pin bakes its own soft shadow into the SVG artwork itself (the
+   first <g> in it, a stack of near-transparent ellipses) — it has no class of
+   its own to hook, and it would lift right along with the pin above, since
+   it's part of the same wrapper. Hidden in favour of the one shadow below
+   that we can actually keep planted on the ground. */
+.maptiler-routing-marker-pin svg > g > g:first-child {
+  display: none;
+}
+
+.maptiler-routing-waypoint-marker::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -2px;
+  width: 21px;
+  height: 10px;
+  margin-left: -10.5px;
+  background: radial-gradient(ellipse at center, rgb(0 0 0 / 32%) 0%, rgb(0 0 0 / 14%) 55%, rgb(0 0 0 / 0%) 100%);
+  border-radius: 50%;
+  transition:
+    scale 180ms ease-out,
+    opacity 180ms ease-out;
+  pointer-events: none;
+}
+
+.maptiler-routing-marker-dragging::after {
+  scale: 0.55;
+  opacity: 0.7;
+}
+
 .maptiler-routing-sr-only {
   position: absolute;
   width: 1px;
@@ -1642,7 +1692,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .maptiler-routing * {
+  .maptiler-routing *,
+  .maptiler-routing-marker-pin,
+  .maptiler-routing-waypoint-marker::after {
     transition-duration: 0.01ms;
   }
 }
